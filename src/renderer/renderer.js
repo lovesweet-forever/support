@@ -199,7 +199,10 @@ const audio = new AudioSession({
         if (e.channel !== 'interviewer') break;
         if (awaitingNewQuestion) { ui.clearTranscript(); awaitingNewQuestion = false; }
         ui.addTranscript(e);
+        // Words reach the question box as they are heard; the final sentence
+        // replaces the live guess.
         if (e.isFinal) ui.appendPending(e.text);
+        else ui.setInterimPending(e.text);
         break;
       case 'answer-start':
         ui.clearPending();

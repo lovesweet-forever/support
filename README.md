@@ -79,7 +79,9 @@ Without a tray the app still works; use the panel's ⚙ button for Setup.
 
 ## First-time setup
 
-Click the **⚙** in the panel (or the tray icon → Setup) and fill in:
+Click the **⚙** in the panel (or the tray icon → Setup). Setup has two tabs: **Profile** (this
+interview: the profile picker, resume, job description, custom prompt, answer style, language) and
+**App** (the program itself: appearance, AI provider and model, API keys, capture devices). Fill in:
 
 - **Resume**, **job description**, **custom prompt**, answer style, language.
 - **Provider + model**, and the **API keys** (Anthropic / OpenAI / Gemini, plus **Deepgram** for
@@ -106,7 +108,9 @@ Click the **⚙** in the panel (or the tray icon → Setup) and fill in:
   files next to it). Deleting a profile deletes its sessions.
 
 Keys can instead go in **`config/keys.json`** next to the app (a `keys.example.json` is included).
-Keys in that file override the UI fields and lock them — the same behaviour as the extension.
+Keys in that file pre-fill any field you have left empty; a key typed in Setup overrides the file,
+and Remove falls back to the file again. Fields show only the first and last 5 characters of a
+key and never reveal it; to replace a key, click the field and paste the new one.
 
 ## Using it
 
@@ -119,8 +123,9 @@ Keys in that file override the UI fields and lock them — the same behaviour as
      [Platform notes](#platform-notes-on-system-audio) for the one-time setup.
    - **Linux:** the app creates a temporary audio source mirroring your default output and captures
      it. Nothing to click.
-3. The interviewer's words collect in the **Question to send** box. Edit if needed, then **Enter**
-   or **Send**. The answer streams in; code goes to the docked code panel.
+3. The interviewer's words appear in the **Question to send** box as they are heard (the live
+   guess at the end is corrected as the sentence completes). Edit if needed, then **Enter** or
+   **Send**. The answer streams in; code goes to the docked code panel.
 4. For technical rounds, **attach what is on screen**: **Snap** grabs a screenshot of the display
    the panel is on (the panel itself is never in the shot), **Attach** picks files, and you can
    also **paste** a screenshot (`Win+Shift+S` / `⌘⇧4`, then `Ctrl+V` in the box) or **drop** files

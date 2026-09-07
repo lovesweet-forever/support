@@ -13,6 +13,8 @@ contextBridge.exposeInMainWorld('copilot', {
     return () => ipcRenderer.removeListener('settings:changed', h);
   },
   openSettings: () => ipcRenderer.invoke('open-settings'),
+  /** Setup window: colour its title bar / window controls from the active theme ({ color, symbolColor } hex). */
+  setWindowChrome: (c) => ipcRenderer.invoke('window:chrome', c),
   setPanelOpacity: (v) => ipcRenderer.invoke('panel:set-opacity', v),
   setIgnoreMouse: (ignore) => ipcRenderer.invoke('panel:set-ignore-mouse', ignore),
   hidePanel: () => ipcRenderer.invoke('panel:hide'),

@@ -1,6 +1,7 @@
 // Settings persistence: a JSON file in userData, plus an optional bundled
-// config/keys.json (same idea as the extension) whose keys win and can't be
-// overwritten from the UI.
+// config/keys.json (same idea as the extension) that pre-fills any API key
+// the user has not set. A key entered in Setup is stored in settings.json and
+// takes precedence over the file; clearing it falls back to the file again.
 
 const { app } = require('electron');
 const fs = require('fs');
@@ -82,21 +83,27 @@ function load() {
     stored = {};
   }
   fileKeys = loadKeyFile();
-  cache = { ...DEFAULTS, ...stored, ...fileKeys };
+  cache = { ...DEFAULTS, ...stored };
   return cache;
 }
 
+// The effective settings: file keys fill in where the user has none, and
+// keysFromFile says which key fields are currently coming from the file.
 function get() {
   const s = load();
-  return { ...s, keysFromFile: Object.fromEntries(KEY_FIELDS.map((f) => [f, Boolean(fileKeys[f])])) };
+  const out = { ...s };
+  const keysFromFile = {};
+  for (const f of KEY_FIELDS) {
+    const own = String(s[f] || '').trim();
+    keysFromFile[f] = !own && Boolean(fileKeys[f]);
+    if (keysFromFile[f]) out[f] = fileKeys[f];
+  }
+  return { ...out, keysFromFile };
 }
 
 function set(patch) {
   const s = load();
-  // A key provided by the file can't be overwritten from the UI.
-  const clean = { ...patch };
-  for (const f of KEY_FIELDS) if (fileKeys[f]) delete clean[f];
-  cache = { ...s, ...clean };
+  cache = { ...s, ...patch };
   const { keysFromFile, ...toWrite } = cache;
   try {
     fs.mkdirSync(path.dirname(settingsPath()), { recursive: true });

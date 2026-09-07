@@ -122,6 +122,14 @@ export function buildPanel(root, handlers) {
 
   let answerEl = null;
   let interim = { interviewer: null, candidate: null };
+  // The live (not yet final) words currently shown at the end of the question box.
+  let interimInBox = '';
+  // The box without the live words. If the user edited the box so it no longer
+  // ends with them, the whole value is kept as-is.
+  const pendingBase = () => {
+    const v = el.pending.value;
+    return interimInBox && v.endsWith(interimInBox) ? v.slice(0, v.length - interimInBox.length) : v;
+  };
   let codeShare = 0.25;
   let codeVisible = false;
   let availability = { anthropic: false, openai: false, gemini: false };
@@ -310,13 +318,26 @@ export function buildPanel(root, handlers) {
     },
 
     getPending() { return el.pending.value; },
-    appendPending(text) {
-      const clean = (text || '').trim(); if (!clean) return;
-      const cur = el.pending.value;
-      el.pending.value = cur && !/\s$/.test(cur) ? `${cur} ${clean}` : `${cur}${clean}`;
+    /**
+     * The interviewer's words go into the box as they are heard: the live
+     * (interim) guess sits at the end and is replaced as Deepgram revises it,
+     * then by the final sentence. Anything the user typed stays.
+     */
+    setInterimPending(text) {
+      const base = pendingBase();
+      const clean = (text || '').trim();
+      interimInBox = clean ? `${base && !/\s$/.test(base) ? ' ' : ''}${clean}` : '';
+      el.pending.value = base + interimInBox;
       el.pending.scrollTop = el.pending.scrollHeight;
     },
-    clearPending() { el.pending.value = ''; },
+    appendPending(text) {
+      const base = pendingBase();
+      interimInBox = '';
+      const clean = (text || '').trim();
+      el.pending.value = clean ? (base && !/\s$/.test(base) ? `${base} ${clean}` : `${base}${clean}`) : base;
+      el.pending.scrollTop = el.pending.scrollHeight;
+    },
+    clearPending() { el.pending.value = ''; interimInBox = ''; },
     getAttachments() { return attachments.slice(); },
     clearAttachments,
 

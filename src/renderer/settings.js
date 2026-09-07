@@ -7,6 +7,32 @@ const KEY_FIELD = { anthropic: 'anthropicKey', openai: 'openaiKey', gemini: 'gem
 let settings = await api.getSettings();
 applyTheme(settings.theme);
 applyFont(settings);
+document.documentElement.classList.add(api.platform === 'darwin' ? 'mac' : api.platform === 'linux' ? 'linux' : 'win');
+
+// The window's title bar and controls are drawn by the OS; tell the main
+// process the theme colours so they match this page.
+function reportChrome() {
+  const cs = getComputedStyle(document.documentElement);
+  const color = cs.getPropertyValue('--bg-page').trim();
+  const symbolColor = cs.getPropertyValue('--fg').trim();
+  api.setWindowChrome({ color, symbolColor }).catch(() => {});
+}
+reportChrome();
+
+// ---- tabs: Profile (this interview) / App (the program itself) --------------
+function showTab(id) {
+  for (const b of document.querySelectorAll('.tab')) b.classList.toggle('active', b.dataset.tab === id);
+  for (const p of document.querySelectorAll('.tab-page')) p.hidden = p.dataset.tab !== id;
+  try { localStorage.setItem('setupTab', id); } catch { /* storage unavailable */ }
+  window.scrollTo(0, 0);
+}
+$('tabs').addEventListener('click', (e) => {
+  const b = e.target.closest('.tab');
+  if (b) showTab(b.dataset.tab);
+});
+let lastTab = 'profile';
+try { lastTab = localStorage.getItem('setupTab') || 'profile'; } catch { /* storage unavailable */ }
+showTab(document.querySelector(`.tab[data-tab="${lastTab}"]`) ? lastTab : 'profile');
 
 // ---- font picker ------------------------------------------------------------
 // Each card is rendered in its own font so the choice is visible before clicking.
@@ -51,6 +77,7 @@ $('themes').addEventListener('click', (e) => {
   settings.theme = card.dataset.themeId;
   applyTheme(settings.theme);
   renderThemeCards();
+  reportChrome();
   save({ theme: settings.theme });
 });
 renderThemeCards();
@@ -87,10 +114,11 @@ renderProfiles();
 api.onSettingsChanged((s) => {
   const switched = s.activeProfileId !== settings.activeProfileId;
   settings = s;
-  applyTheme(s.theme); renderThemeCards();
+  applyTheme(s.theme); renderThemeCards(); reportChrome();
   applyFont(s); renderFontCards();
   if (switched) fillProfileFields(s);
   renderProfiles();
+  renderKeyLocks(); // e.g. a cleared key falling back to config/keys.json (skips the field being edited)
 });
 
 $('language').innerHTML = LANGUAGES.map((l) => `<option value="${l.code}">${l.label}</option>`).join('');
@@ -105,16 +133,53 @@ function renderProviderFields() {
   $('modelCustom').value = known ? '' : settings.model || '';
 }
 
+// ---- API keys: masked (first 5 … last 5), never revealed --------------------
+// A field shows the mask. Focusing it empties it so a new key can be pasted;
+// Enter / blur saves a non-empty value, Esc or leaving it empty keeps the old
+// key. Remove deletes the user's own key (a file key then shows again).
+const KEY_FIELDS = ['anthropicKey', 'openaiKey', 'geminiKey', 'deepgramKey'];
+const keyValues = {}; // the real values (never shown in full)
+const keyPlaceholder = {};
+const maskKey = (v) => (v.length > 10 ? `${v.slice(0, 5)}${'•'.repeat(8)}${v.slice(-5)}` : v);
+
 function renderKeyLocks() {
-  for (const field of ['anthropicKey', 'openaiKey', 'geminiKey', 'deepgramKey']) {
+  for (const field of KEY_FIELDS) {
     const input = $(field);
+    keyValues[field] = settings[field] || '';
     const fromFile = Boolean(settings.keysFromFile?.[field]);
-    input.value = settings[field] || '';
-    input.readOnly = fromFile;
+    if (document.activeElement !== input) input.value = maskKey(keyValues[field]);
     input.classList.toggle('from-file', fromFile);
+    document.querySelector(`[data-remove="${field}"]`).hidden = !keyValues[field] || fromFile;
     const note = document.querySelector(`[data-note="${field}"]`);
-    if (note) note.textContent = fromFile ? 'Loaded from config/keys.json' : '';
+    if (note) note.textContent = fromFile ? 'From config/keys.json — paste a key here to override it' : '';
   }
+}
+for (const field of KEY_FIELDS) {
+  const input = $(field);
+  keyPlaceholder[field] = input.placeholder;
+  let cancelled = false;
+  input.addEventListener('focus', () => {
+    cancelled = false;
+    input.value = '';
+    input.placeholder = keyValues[field] ? `Paste a new key — leave empty to keep ${maskKey(keyValues[field])}` : keyPlaceholder[field];
+  });
+  input.addEventListener('blur', () => {
+    const v = input.value.trim();
+    if (v && !cancelled) { keyValues[field] = v; save({ [field]: v }); }
+    input.value = maskKey(keyValues[field]);
+    input.placeholder = keyPlaceholder[field];
+    document.querySelector(`[data-remove="${field}"]`).hidden = !keyValues[field] || (Boolean(settings.keysFromFile?.[field]) && !v);
+  });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    if (e.key === 'Escape') { cancelled = true; input.value = ''; input.blur(); }
+  });
+  document.querySelector(`[data-remove="${field}"]`).addEventListener('click', () => {
+    keyValues[field] = '';
+    input.value = '';
+    document.querySelector(`[data-remove="${field}"]`).hidden = true;
+    save({ [field]: '' }); // the settings:changed broadcast re-renders (file fallback, if any)
+  });
 }
 
 let saveTimer = null;
@@ -133,16 +198,11 @@ bindText('name', 'name');
 bindText('resume', 'resume');
 bindText('jobDescription', 'jobDescription');
 bindText('customPrompt', 'customPrompt');
-bindText('deepgramKey', 'deepgramKey');
 $('answerStyle').addEventListener('change', () => save({ answerStyle: $('answerStyle').value }));
 $('language').addEventListener('change', () => save({ language: $('language').value }));
 $('provider').addEventListener('change', () => { const provider = $('provider').value; save({ provider, model: PROVIDERS[provider].defaultModel }); renderProviderFields(); });
 $('model').addEventListener('change', () => { $('modelCustom').value = ''; save({ model: $('model').value }); });
 $('modelCustom').addEventListener('input', () => save({ model: $('modelCustom').value.trim() || $('model').value }));
-$('providerKey') && null;
-$('anthropicKey').addEventListener('input', () => save({ anthropicKey: $('anthropicKey').value.trim() }));
-$('openaiKey').addEventListener('input', () => save({ openaiKey: $('openaiKey').value.trim() }));
-$('geminiKey').addEventListener('input', () => save({ geminiKey: $('geminiKey').value.trim() }));
 bindCheck('transcribeCandidate', 'transcribeCandidate');
 bindCheck('autoAnswer', 'autoAnswer');
 

@@ -155,6 +155,11 @@ function createPanel() {
   });
 }
 
+// Title-bar colours of the Setup window, reported by its page from the active
+// theme (renderer/settings.js). Defaults match the Dark theme for the first open.
+const TITLEBAR_HEIGHT = 36;
+let chrome = { color: '#10131a', symbolColor: '#f2f4f8' };
+
 function createSettingsWindow() {
   if (settingsWin && !settingsWin.isDestroyed()) {
     settingsWin.show();
@@ -165,17 +170,31 @@ function createSettingsWindow() {
   // window would open underneath it. Make Setup a child of the panel (children
   // always stack above their parent) and pin it to the same level.
   const owner = panel && !panel.isDestroyed() && panel.isVisible() ? panel : undefined;
+  // The page draws its own title bar in the theme colours; the OS only
+  // contributes the window controls (Windows: overlay buttons recoloured via
+  // setTitleBarOverlay; macOS: the traffic lights). Linux keeps its native
+  // frame, which the desktop theme styles.
   settingsWin = new BrowserWindow({
     width: 900,
     height: 760,
     title: 'Interview Copilot — Setup',
     parent: owner,
+    show: false,
+    backgroundColor: chrome.color,
+    autoHideMenuBar: true,
+    ...(isLinux
+      ? {}
+      : {
+          titleBarStyle: isMac ? 'hiddenInset' : 'hidden',
+          titleBarOverlay: isMac ? true : { color: chrome.color, symbolColor: chrome.symbolColor, height: TITLEBAR_HEIGHT }
+        }),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false
     }
   });
+  settingsWin.once('ready-to-show', () => { if (settingsWin && !settingsWin.isDestroyed()) settingsWin.show(); });
   if (!isLinux) settingsWin.setContentProtection(true);
   settingsWin.setAlwaysOnTop(true, 'screen-saver');
   settingsWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
@@ -219,7 +238,13 @@ function registerShortcuts() {
 // macOS only: an application menu gives the setup window the standard Edit
 // shortcuts (paste a resume / key) and Cmd+Q. Windows keeps Electron's default.
 function installAppMenu() {
-  if (!isMac) return;
+  if (!isMac) {
+    // No File / Edit / View / Window / Help bar on the Setup window. Text
+    // editing shortcuts (Ctrl+C / V / X / A / Z) are native on Windows and
+    // Linux and keep working without a menu.
+    Menu.setApplicationMenu(null);
+    return;
+  }
   Menu.setApplicationMenu(
     Menu.buildFromTemplate([
       {
@@ -348,6 +373,20 @@ ipcMain.handle('sessions:end', (_e, id) => db.endSession(id));
 ipcMain.handle('sessions:turn', (_e, id, turn) => db.addTurn(id, turn));
 ipcMain.handle('sessions:transcript', (_e, id, entry) => db.addTranscript(id, entry));
 ipcMain.handle('open-settings', () => createSettingsWindow());
+
+// The Setup page reports its theme colours so the window controls overlay and
+// the window background follow the theme.
+const HEX = /^#[0-9a-f]{6}$/i;
+ipcMain.handle('window:chrome', (e, c) => {
+  if (!HEX.test(c?.color || '') || !HEX.test(c?.symbolColor || '')) return;
+  chrome = { color: c.color, symbolColor: c.symbolColor };
+  const win = BrowserWindow.fromWebContents(e.sender);
+  if (!win || win.isDestroyed() || win !== settingsWin) return;
+  win.setBackgroundColor(chrome.color);
+  if (!isMac && !isLinux) {
+    try { win.setTitleBarOverlay({ color: chrome.color, symbolColor: chrome.symbolColor, height: TITLEBAR_HEIGHT }); } catch { /* frame without overlay */ }
+  }
+});
 ipcMain.handle('panel:set-opacity', (_e, value) => {
   if (panel && !panel.isDestroyed()) panel.setOpacity(Math.max(0.2, Math.min(1, value)));
 });

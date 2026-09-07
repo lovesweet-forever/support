@@ -7,107 +7,126 @@
     <title>Interview Copilot — Setup</title>
   </head>
   <body>
-    <h1>Interview Copilot — Setup</h1>
-    <p class="sub">Everything here is stored locally on this machine and saves as you type.</p>
+    <!-- Drawn by the page so it follows the theme; the OS only adds the window
+         controls (see main.js createSettingsWindow). -->
+    <header class="titlebar">
+      <span class="titlebar-title">Interview Copilot — Setup</span>
+    </header>
 
-    <fieldset>
-      <legend>Before the interview</legend>
-      <label for="profile">Profile</label>
-      <div class="row">
-        <select id="profile"></select>
-        <button type="button" id="profileNew" title="A blank profile for another company / role">New</button>
-        <button type="button" id="profileCopy" title="Copy this profile (same resume, edit the job description)">Duplicate</button>
-        <button type="button" id="profileDelete" title="Delete this profile and all of its saved sessions">Delete</button>
+    <nav class="tabs" id="tabs">
+      <button type="button" class="tab" data-tab="profile" title="This interview: who you are and what you are applying for">Profile</button>
+      <button type="button" class="tab" data-tab="app" title="The app itself: look, AI provider, keys, audio">App</button>
+      <span class="tabs-hint">Stored locally on this machine, saves as you type.</span>
+    </nav>
+
+    <!-- ============================================================ Profile -->
+    <section class="tab-page" data-tab="profile">
+      <fieldset>
+        <legend>Profile</legend>
+        <label for="profile">Active profile</label>
+        <div class="row">
+          <select id="profile"></select>
+          <button type="button" id="profileNew" title="A blank profile for another company / role">New</button>
+          <button type="button" id="profileCopy" title="Copy this profile (same resume, edit the job description)">Duplicate</button>
+          <button type="button" id="profileDelete" title="Delete this profile and all of its saved sessions">Delete</button>
+        </div>
+        <p class="hint">One profile per company / role. Everything on this tab belongs to it, and interview sessions are saved under it — pick a profile and a session in the panel.</p>
+
+        <label for="name">Profile name</label>
+        <input type="text" id="name" placeholder="e.g. Acme — Senior Backend" />
+      </fieldset>
+
+      <fieldset>
+        <legend>Before the interview</legend>
+        <label for="resume">Resume</label>
+        <textarea id="resume" placeholder="Paste your resume as plain text…"></textarea>
+
+        <label for="jobDescription">Job description</label>
+        <textarea id="jobDescription" placeholder="Paste the job posting…"></textarea>
+
+        <label for="customPrompt">Custom prompt</label>
+        <textarea id="customPrompt" style="min-height:80px"></textarea>
+
+        <div class="grid">
+          <div>
+            <label for="answerStyle">Answer style</label>
+            <select id="answerStyle"></select>
+          </div>
+          <div>
+            <label for="language">Meeting language</label>
+            <select id="language"></select>
+          </div>
+        </div>
+      </fieldset>
+    </section>
+
+    <!-- ================================================================ App -->
+    <section class="tab-page" data-tab="app" hidden>
+      <fieldset>
+        <legend>Appearance</legend>
+        <label>Theme</label>
+        <div class="themes" id="themes"></div>
+        <p class="hint">Applies to the panel and this window right away. The panel header has the same picker.</p>
+
+        <label>Font</label>
+        <div class="fonts" id="fonts"></div>
+        <label for="fontCustom">Custom font (optional)</label>
+        <input type="text" id="fontCustom" placeholder="Name of any font installed on this machine, e.g. Inter" />
+        <p class="hint">A custom font is used when it is installed; otherwise the picked font above applies. Answer text size is the A− / A+ buttons in the panel.</p>
+      </fieldset>
+
+      <fieldset>
+        <legend>AI answers</legend>
+        <div class="grid">
+          <div>
+            <label for="provider">Provider</label>
+            <select id="provider"></select>
+          </div>
+          <div>
+            <label for="model">Model</label>
+            <select id="model"></select>
+          </div>
+        </div>
+        <label for="modelCustom">Model ID override</label>
+        <input type="text" id="modelCustom" placeholder="Leave blank to use the dropdown" />
+      </fieldset>
+
+      <fieldset>
+        <legend>API keys</legend>
+        <p class="hint">Keys are shown as their first and last 5 characters and are never revealed. To replace one, click the field and paste the new key (Enter or click away to save, Esc to cancel). A <code>config/keys.json</code> next to the app pre-fills empty fields; a key entered here overrides it, and Remove goes back to it.</p>
+        <div class="grid">
+          <div><label for="anthropicKey">Anthropic API key</label><div class="key-row"><input type="text" class="key" id="anthropicKey" placeholder="sk-ant-…" autocomplete="off" spellcheck="false" /><button type="button" class="key-remove" data-remove="anthropicKey" hidden>Remove</button></div><p class="hint file-note" data-note="anthropicKey"></p></div>
+          <div><label for="openaiKey">OpenAI API key</label><div class="key-row"><input type="text" class="key" id="openaiKey" placeholder="sk-…" autocomplete="off" spellcheck="false" /><button type="button" class="key-remove" data-remove="openaiKey" hidden>Remove</button></div><p class="hint file-note" data-note="openaiKey"></p></div>
+          <div><label for="geminiKey">Gemini API key</label><div class="key-row"><input type="text" class="key" id="geminiKey" placeholder="AIza…" autocomplete="off" spellcheck="false" /><button type="button" class="key-remove" data-remove="geminiKey" hidden>Remove</button></div><p class="hint file-note" data-note="geminiKey"></p></div>
+          <div><label for="deepgramKey">Deepgram API key</label><div class="key-row"><input type="text" class="key" id="deepgramKey" placeholder="required for transcription" autocomplete="off" spellcheck="false" /><button type="button" class="key-remove" data-remove="deepgramKey" hidden>Remove</button></div><p class="hint file-note" data-note="deepgramKey"></p></div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Capture</legend>
+        <div class="check"><input type="checkbox" id="transcribeCandidate" /><label for="transcribeCandidate">Also transcribe my microphone (shows both sides, gives follow-up context)</label></div>
+        <div class="check"><input type="checkbox" id="autoAnswer" /><label for="autoAnswer">Answer automatically when a question is detected (off = you press Send / Enter)</label></div>
+        <div class="grid">
+          <div>
+            <label for="systemAudioDevice">System audio source (the interviewer)</label>
+            <select id="systemAudioDevice"></select>
+            <p class="hint" id="systemAudioHint"></p>
+          </div>
+          <div>
+            <label for="micDevice">Microphone (you)</label>
+            <select id="micDevice"></select>
+            <p class="hint"><a href="#" id="refreshDevices">Refresh device list</a></p>
+          </div>
+        </div>
+      </fieldset>
+
+      <div class="note">
+        Keys are stored in plain text in this machine's app data. The panel is a normal on-screen window and
+        is visible if you share your screen. Transcribing a call may require the other participants' consent
+        where you are.
       </div>
-      <p class="hint">One profile per company / role. The resume, job description, custom prompt, answer style and language below belong to it, and interview sessions are saved under it — pick a profile and a session in the panel.</p>
+    </section>
 
-      <label for="name">Profile name</label>
-      <input type="text" id="name" placeholder="e.g. Acme — Senior Backend" />
-
-      <label for="resume">Resume</label>
-      <textarea id="resume" placeholder="Paste your resume as plain text…"></textarea>
-
-      <label for="jobDescription">Job description</label>
-      <textarea id="jobDescription" placeholder="Paste the job posting…"></textarea>
-
-      <label for="customPrompt">Custom prompt</label>
-      <textarea id="customPrompt" style="min-height:80px"></textarea>
-
-      <div class="grid">
-        <div>
-          <label for="answerStyle">Answer style</label>
-          <select id="answerStyle"></select>
-        </div>
-        <div>
-          <label for="language">Meeting language</label>
-          <select id="language"></select>
-        </div>
-      </div>
-    </fieldset>
-
-    <fieldset>
-      <legend>Appearance</legend>
-      <label>Theme</label>
-      <div class="themes" id="themes"></div>
-      <p class="hint">Applies to the panel and this window right away. The panel header has the same picker.</p>
-
-      <label>Font</label>
-      <div class="fonts" id="fonts"></div>
-      <label for="fontCustom">Custom font (optional)</label>
-      <input type="text" id="fontCustom" placeholder="Name of any font installed on this machine, e.g. Inter" />
-      <p class="hint">A custom font is used when it is installed; otherwise the picked font above applies. Answer text size is the A− / A+ buttons in the panel.</p>
-    </fieldset>
-
-    <fieldset>
-      <legend>AI answers</legend>
-      <div class="grid">
-        <div>
-          <label for="provider">Provider</label>
-          <select id="provider"></select>
-        </div>
-        <div>
-          <label for="model">Model</label>
-          <select id="model"></select>
-        </div>
-      </div>
-      <label for="modelCustom">Model ID override</label>
-      <input type="text" id="modelCustom" placeholder="Leave blank to use the dropdown" />
-    </fieldset>
-
-    <fieldset>
-      <legend>API keys</legend>
-      <p class="hint">Prefer a <code>config/keys.json</code> file next to the app; keys there override these fields and lock them.</p>
-      <div class="grid">
-        <div><label for="anthropicKey">Anthropic API key</label><input type="password" id="anthropicKey" placeholder="sk-ant-…" /><p class="hint file-note" data-note="anthropicKey"></p></div>
-        <div><label for="openaiKey">OpenAI API key</label><input type="password" id="openaiKey" placeholder="sk-…" /><p class="hint file-note" data-note="openaiKey"></p></div>
-        <div><label for="geminiKey">Gemini API key</label><input type="password" id="geminiKey" placeholder="AIza…" /><p class="hint file-note" data-note="geminiKey"></p></div>
-        <div><label for="deepgramKey">Deepgram API key</label><input type="password" id="deepgramKey" placeholder="required for transcription" /><p class="hint file-note" data-note="deepgramKey"></p></div>
-      </div>
-    </fieldset>
-
-    <fieldset>
-      <legend>Capture</legend>
-      <div class="check"><input type="checkbox" id="transcribeCandidate" /><label for="transcribeCandidate">Also transcribe my microphone (shows both sides, gives follow-up context)</label></div>
-      <div class="check"><input type="checkbox" id="autoAnswer" /><label for="autoAnswer">Answer automatically when a question is detected (off = you press Send / Enter)</label></div>
-      <div class="grid">
-        <div>
-          <label for="systemAudioDevice">System audio source (the interviewer)</label>
-          <select id="systemAudioDevice"></select>
-          <p class="hint" id="systemAudioHint"></p>
-        </div>
-        <div>
-          <label for="micDevice">Microphone (you)</label>
-          <select id="micDevice"></select>
-          <p class="hint"><a href="#" id="refreshDevices">Refresh device list</a></p>
-        </div>
-      </div>
-    </fieldset>
-
-    <div class="note">
-      Keys are stored in plain text in this machine's app data. The panel is a normal on-screen window and
-      is visible if you share your screen. Transcribing a call may require the other participants' consent
-      where you are.
-    </div>
     <div id="saved">Saved</div>
 
     <script type="module" src="settings.js"></script>
