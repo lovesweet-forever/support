@@ -114,6 +114,10 @@ Keys in that file override the UI fields and lock them — the same behaviour as
    sent to the AI provider with the question and are kept for the two most recent questions so
    follow-ups like "explain line 3" still see the screenshot. On macOS, Snap needs *Screen
    Recording* permission for Interview Copilot (System Settings → Privacy & Security).
+5. After the interview, press **PDF** in the Answer bar to save a report: every question with its
+   attachments and answer, timestamps, the AI model used, and the full spoken transcript of both
+   sides. It covers everything since the app was opened; the file opens in a Save dialog
+   (Documents folder by default) and is revealed in the file manager once written.
 
 | Windows / Linux (global) | macOS (global) | Action |
 |---|---|---|

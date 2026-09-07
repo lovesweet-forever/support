@@ -19,8 +19,9 @@
 // WDA_EXCLUDEFROMCAPTURE, macOS: NSWindowSharingNone) while staying visible
 // on the local display.
 
-const { app, BrowserWindow, ipcMain, globalShortcut, desktopCapturer, session, Tray, Menu, shell, systemPreferences, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, globalShortcut, desktopCapturer, session, Tray, Menu, shell, systemPreferences, screen, dialog } = require('electron');
 const { execFile } = require('child_process');
+const fs = require('fs');
 const path = require('path');
 const settings = require('./settings');
 
@@ -276,6 +277,47 @@ ipcMain.handle('panel:set-ignore-mouse', (_e, ignore) => {
   if (panel && !panel.isDestroyed()) panel.setIgnoreMouseEvents(Boolean(ignore), { forward: true });
 });
 ipcMain.handle('panel:hide', () => { if (panel && !panel.isDestroyed()) panel.hide(); });
+
+// Session report -> PDF. The renderer builds the report page (renderer/report.js);
+// here it is written to a temp file, rendered in a hidden window and printed
+// to PDF at the path the user picks. Returns { path } | { canceled } | { error }.
+ipcMain.handle('report:export-pdf', async (_e, { html, suggestedName }) => {
+  const owner = panel && !panel.isDestroyed() ? panel : undefined;
+  const { canceled, filePath } = await dialog.showSaveDialog(owner, {
+    title: 'Save interview report as PDF',
+    defaultPath: path.join(app.getPath('documents'), suggestedName || 'Interview.pdf'),
+    filters: [{ name: 'PDF', extensions: ['pdf'] }]
+  });
+  if (canceled || !filePath) return { canceled: true };
+
+  const tmp = path.join(app.getPath('temp'), `interview-copilot-report-${process.pid}-${Date.now()}.html`);
+  const win = new BrowserWindow({
+    show: false,
+    webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false }
+  });
+  try {
+    fs.writeFileSync(tmp, html, 'utf8');
+    await win.loadFile(tmp);
+    const pdf = await win.webContents.printToPDF({
+      pageSize: 'A4',
+      printBackground: true,
+      margins: { top: 0.6, bottom: 0.7, left: 0.6, right: 0.6 },
+      displayHeaderFooter: true,
+      headerTemplate: '<span></span>',
+      footerTemplate:
+        '<div style="width:100%;text-align:center;font-size:8px;color:#888;font-family:sans-serif">' +
+        'Interview Copilot &middot; page <span class="pageNumber"></span> / <span class="totalPages"></span></div>'
+    });
+    fs.writeFileSync(filePath, pdf);
+    shell.showItemInFolder(filePath);
+    return { path: filePath };
+  } catch (err) {
+    return { error: err.message };
+  } finally {
+    win.destroy();
+    fs.rmSync(tmp, { force: true });
+  }
+});
 
 // Screenshot of the display the panel sits on, to attach to a question. The
 // panel and the setup window are content-protected, so on Windows / macOS

@@ -84,6 +84,7 @@ export function buildPanel(root, handlers) {
         <span class="section-actions">
           <button class="mini" data-font-dec>A&minus;</button>
           <button class="mini" data-font-inc>A+</button>
+          <button class="mini" data-export title="Save every question and answer of this session as a PDF">PDF</button>
           <button class="mini" data-prev disabled>&lsaquo; Prev</button>
           <button class="mini" data-next disabled>Next &rsaquo;</button>
         </span>
@@ -189,6 +190,11 @@ export function buildPanel(root, handlers) {
   $('[data-font-inc]').onclick = () => handlers.onFont(fontPx + 1);
   el.prev.onclick = () => handlers.onPrev();
   el.next.onclick = () => handlers.onNext();
+  const exportBtn = $('[data-export]');
+  exportBtn.onclick = async () => {
+    exportBtn.disabled = true;
+    try { await handlers.onExport(); } finally { exportBtn.disabled = false; }
+  };
   $('[data-copy]').onclick = async () => {
     const text = Array.from(el.codeBody.querySelectorAll('code')).map((c) => c.textContent).join('\n\n');
     try { await navigator.clipboard.writeText(text); } catch {}
@@ -238,6 +244,8 @@ export function buildPanel(root, handlers) {
     setAudioState(s) { el.audio.className = `dot audio ${s || 'off'}`; },
     setRunning(on) { el.start.textContent = on ? 'Stop' : 'Start'; el.start.classList.toggle('stop', on); },
     setWarning(msg) { el.warning.textContent = msg || ''; },
+    /** A short status line that clears itself after a few seconds. */
+    notice,
     setLanguage(code) { el.lang.value = code; },
     setStyle(id) { el.style.value = id; },
     setTheme(id) { el.theme.value = THEMES.some((t) => t.id === id) ? id : THEMES[0].id; },

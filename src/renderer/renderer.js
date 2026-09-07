@@ -7,9 +7,11 @@ import { AudioSession } from './audio.js';
 import { providerAvailability, firstAvailableProvider } from '../shared/settings-util.js';
 import { PROVIDERS, applyTheme, applyFont } from '../shared/constants.js';
 import { DEFAULT_ATTACHMENT_QUESTION } from '../shared/attachments.js';
+import { buildReportHtml, suggestedReportName } from './report.js';
 
 const api = window.copilot;
 let settings = await api.getSettings();
+const startedAt = Date.now();
 
 // The inputs an answer is grounded in. Starting without them produces generic,
 // ungrounded answers, so Start requires them and sends you to Setup if missing.
@@ -54,6 +56,7 @@ const ui = buildPanel(document.getElementById('root'), {
   onSend: sendPending,
   onPrev: () => showQA(viewIndex - 1),
   onNext: () => showQA(viewIndex + 1),
+  onExport: exportPdf,
   onCodeShare: (codeShare) => save({ codeShare })
 });
 
@@ -65,7 +68,20 @@ async function save(patch) {
 
 // ---- Q&A history (same model as the extension) ----------------------------
 const qa = [];
+// Every final utterance of both sides, for the PDF report (the on-screen
+// transcript only keeps the last few interviewer turns).
+const transcriptLog = [];
 let viewIndex = -1;
+
+// Save everything since the app was opened — questions, attachments, answers
+// and the spoken transcript — as a PDF, to review after the interview.
+async function exportPdf() {
+  if (!qa.length && !transcriptLog.length) { ui.notice('Nothing to export yet.'); return; }
+  const html = buildReportHtml({ qa, transcript: transcriptLog, settings, startedAt });
+  const res = await api.exportPdf({ html, suggestedName: suggestedReportName(startedAt) });
+  if (res.path) ui.notice(`Saved ${res.path}`);
+  else if (res.error) ui.setWarning(`PDF export failed: ${res.error}`);
+}
 let awaitingNewQuestion = false;
 const latest = () => qa[qa.length - 1];
 const viewingLatest = () => viewIndex === qa.length - 1;
@@ -94,6 +110,7 @@ const audio = new AudioSession({
   emit: (e) => {
     switch (e.type) {
       case 'transcript':
+        if (e.isFinal) transcriptLog.push({ channel: e.channel, text: e.text, at: Date.now() });
         if (e.channel !== 'interviewer') break;
         if (awaitingNewQuestion) { ui.clearTranscript(); awaitingNewQuestion = false; }
         ui.addTranscript(e);
@@ -102,7 +119,7 @@ const audio = new AudioSession({
       case 'answer-start':
         ui.clearPending();
         for (const entry of qa) entry.streaming = false;
-        qa.push({ question: e.question, attachments: e.attachments || [], answer: '', streaming: true, error: null });
+        qa.push({ question: e.question, attachments: e.attachments || [], answer: '', streaming: true, error: null, at: Date.now() });
         viewIndex = qa.length - 1;
         ui.startAnswer(e.question, e.attachments);
         ui.setNav({ index: viewIndex, total: qa.length });
