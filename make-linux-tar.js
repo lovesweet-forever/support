@@ -5,9 +5,12 @@ const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
 
-const [srcDir, outFile, topName] = process.argv.slice(2);
-if (!srcDir || !outFile || !topName) {
-  console.error('usage: make-linux-tar.js <linux-unpacked dir> <out.tar.gz> <top-level folder name>');
+// Output name and top-level folder default to the version in package.json so
+// a version bump never needs a matching edit here or in the npm script.
+const { version } = require('./package.json');
+const [srcDir, outFile = `dist/InterviewCopilot-${version}-x64.tar.gz`, topName = `InterviewCopilot-${version}-x64`] = process.argv.slice(2);
+if (!srcDir) {
+  console.error('usage: make-linux-tar.js <linux-unpacked dir> [out.tar.gz] [top-level folder name]');
   process.exit(1);
 }
 

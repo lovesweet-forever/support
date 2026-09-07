@@ -1,6 +1,8 @@
 /* Panel window styles. All colours come from the theme variables in themes.css;
  * the active theme is <html data-theme="…"> (set by renderer.js from settings). */
 * { box-sizing: border-box; }
+/* Always the normal arrow pointer: no I-beam over text, no hand over buttons, no resize arrows. */
+*, *::before, *::after { cursor: default !important; }
 html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
 body {
   font: 13px/1.45 var(--font-ui);
@@ -46,7 +48,7 @@ select, button {
   font: inherit; color: inherit;
   background: var(--surface-2);
   border: 1px solid var(--border-strong);
-  border-radius: 6px; cursor: pointer;
+  border-radius: 6px;
 }
 select { padding: 3px 4px; font-size: 11px; }
 select option { color: var(--option-fg); background: var(--option-bg); }
@@ -72,7 +74,7 @@ button.start.stop { background: var(--danger); }
 .section-actions { display: flex; gap: 6px; }
 button.mini { height: 20px; padding: 0 8px; font-size: 10px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; }
 button.mini.send { color: var(--accent-fg); background: var(--accent); border-color: transparent; }
-button.mini:disabled { opacity: .35; cursor: default; }
+button.mini:disabled { opacity: .35; }
 .qa-counter { margin-left: 6px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--fg-faint); }
 
 /* ---------------------------------------------------------------- transcript */
@@ -94,8 +96,8 @@ button.mini:disabled { opacity: .35; cursor: default; }
 
 /* ------------------------------------------------------------- content row */
 .content { display: flex; flex: 1; min-height: 0; border-top: 1px solid var(--border); }
-.answer { flex: 1; min-width: 0; min-height: 0; padding: 4px 10px 10px; overflow: auto; cursor: text; }
-.seam { flex: none; width: 6px; cursor: ew-resize; background: color-mix(in srgb, var(--fg) 6%, transparent); transition: background .12s ease; }
+.answer { flex: 1; min-width: 0; min-height: 0; padding: 4px 10px 10px; overflow: auto; }
+.seam { flex: none; width: 6px; background: color-mix(in srgb, var(--fg) 6%, transparent); transition: background .12s ease; }
 .seam:hover { background: color-mix(in srgb, var(--accent) 50%, transparent); }
 .code-col { flex: none; min-height: 0; display: flex; flex-direction: column; background: var(--code-col-bg); }
 .code-col .code-head { display: flex; align-items: center; gap: 8px; padding: 5px 10px; border-bottom: 1px solid var(--border); }

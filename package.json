@@ -1,6 +1,6 @@
 {
   "name": "support",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "Desktop interview copilot for Windows, macOS and Linux — live transcription of the interviewer plus AI answers grounded in your resume, in an always-on-top panel. Works with Zoom/Teams/Meet desktop apps via system audio.",
   "author": {
     "name": "Marius Morar",
@@ -24,7 +24,7 @@
     "dist:linux:appimage": "electron-builder --linux AppImage --x64",
     "dist:linux:deb": "electron-builder --linux deb --x64",
     "dist:linux:arm64": "electron-builder --linux AppImage --arm64",
-    "dist:linux:tar": "electron-builder --linux --dir --x64 && node make-linux-tar.js dist/linux-unpacked dist/InterviewCopilot-1.0.1-x64.tar.gz InterviewCopilot-1.0.1-x64"
+    "dist:linux:tar": "electron-builder --linux --dir --x64 && node make-linux-tar.js dist/linux-unpacked"
   },
   "devDependencies": {
     "electron": "^33.2.1",
