@@ -1,4 +1,4 @@
-import { PROVIDERS, LANGUAGES, ANSWER_STYLES, THEMES, applyTheme } from '../shared/constants.js';
+import { PROVIDERS, LANGUAGES, ANSWER_STYLES, THEMES, FONTS, applyTheme, applyFont } from '../shared/constants.js';
 
 const api = window.copilot;
 const $ = (id) => document.getElementById(id);
@@ -6,6 +6,34 @@ const KEY_FIELD = { anthropic: 'anthropicKey', openai: 'openaiKey', gemini: 'gem
 
 let settings = await api.getSettings();
 applyTheme(settings.theme);
+applyFont(settings);
+
+// ---- font picker ------------------------------------------------------------
+// Each card is rendered in its own font so the choice is visible before clicking.
+$('fonts').innerHTML = FONTS.map(
+  (f) => `<button type="button" class="font-card" data-font-id="${f.id}" style="font-family:${f.stack.replace(/"/g, '&quot;')}">
+    <span class="sample">Aa</span><span class="meta"><span class="name">${f.label}</span><span class="hint">${f.hint}</span></span></button>`
+).join('');
+function renderFontCards() {
+  for (const card of document.querySelectorAll('.font-card')) {
+    card.classList.toggle('active', card.dataset.fontId === (settings.font || 'system'));
+  }
+}
+$('fonts').addEventListener('click', (e) => {
+  const card = e.target.closest('.font-card');
+  if (!card) return;
+  settings.font = card.dataset.fontId;
+  applyFont(settings);
+  renderFontCards();
+  save({ font: settings.font });
+});
+$('fontCustom').value = settings.fontCustom || '';
+$('fontCustom').addEventListener('input', () => {
+  settings.fontCustom = $('fontCustom').value;
+  applyFont(settings);
+  save({ fontCustom: settings.fontCustom.trim() });
+});
+renderFontCards();
 
 // ---- theme picker -----------------------------------------------------------
 $('themes').innerHTML = THEMES.map(

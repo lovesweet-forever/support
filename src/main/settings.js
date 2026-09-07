@@ -25,6 +25,9 @@ const DEFAULTS = {
   panelOpacity: 0.96,
   // Colour theme id (see shared/constants.js THEMES)
   theme: 'dark',
+  // UI font id (see shared/constants.js FONTS) and an optional installed font name
+  font: 'system',
+  fontCustom: '',
   // window geometry
   panelBounds: null,
   codeShare: 0.25,

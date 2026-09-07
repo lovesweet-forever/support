@@ -5,7 +5,7 @@
 import { buildPanel } from './ui.js';
 import { AudioSession } from './audio.js';
 import { providerAvailability, firstAvailableProvider } from '../shared/settings-util.js';
-import { PROVIDERS, applyTheme } from '../shared/constants.js';
+import { PROVIDERS, applyTheme, applyFont } from '../shared/constants.js';
 
 const api = window.copilot;
 let settings = await api.getSettings();
@@ -144,6 +144,7 @@ function pushAiConfig(s) {
 function applySettings(s) {
   settings = s;
   applyTheme(s.theme);
+  applyFont(s);
   ui.setTheme(s.theme);
   ui.setLanguage(s.language);
   ui.setStyle(s.answerStyle);

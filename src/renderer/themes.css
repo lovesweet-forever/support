@@ -1,8 +1,16 @@
 /* Colour themes for the panel and the setup window. Each theme sets a handful
  * of base colours on <html data-theme="…">; everything else (muted text,
  * surfaces, borders, soft tints) is derived with color-mix() below, so a theme
- * is ~15 lines. The list of themes lives in shared/constants.js (THEMES). */
+ * is ~15 lines. The list of themes lives in shared/constants.js (THEMES).
+ *
+ * The UI font is --font-ui; renderer/settings JS override it on <html> from
+ * the `font` setting (see shared/constants.js FONTS). */
 
+:root {
+  --font-ui: "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", sans-serif;
+}
+
+/* ---- Dark (default): neutral slate with a blue accent */
 :root, [data-theme="dark"] {
   color-scheme: dark;
   --bg-panel: rgba(16, 19, 26, 0.94);
@@ -24,6 +32,7 @@
   --option-bg: #ffffff;
 }
 
+/* ---- Light: clean grey-white with a blue accent */
 [data-theme="light"] {
   color-scheme: light;
   --bg-panel: rgba(248, 249, 252, 0.97);
@@ -45,88 +54,202 @@
   --option-bg: #ffffff;
 }
 
-[data-theme="ocean"] {
+/* ---- Nord: cool arctic blue-greys (nordtheme.com) */
+[data-theme="nord"] {
   color-scheme: dark;
-  --bg-panel: rgba(8, 22, 40, 0.94);
-  --bg-page: #081628;
-  --fg: #e6f0fa;
-  --accent: #22d3ee;
-  --accent-fg: #06222b;
-  --accent-2: #67e8f9;
-  --ok: #34d399;
-  --danger: #fb7185;
-  --danger-fg: #fda4af;
-  --warn: #fde68a;
-  --strong: #fde68a;
-  --inline-code: #a5f3fc;
-  --code-fg: #e0f2fe;
-  --code-bg: rgba(0, 10, 25, 0.5);
-  --code-col-bg: rgba(0, 10, 25, 0.3);
-  --option-fg: #081628;
-  --option-bg: #ffffff;
+  --bg-panel: rgba(46, 52, 64, 0.95);
+  --bg-page: #2e3440;
+  --fg: #eceff4;
+  --accent: #88c0d0;
+  --accent-fg: #2e3440;
+  --accent-2: #81a1c1;
+  --ok: #a3be8c;
+  --danger: #bf616a;
+  --danger-fg: #e4a0a6;
+  --warn: #ebcb8b;
+  --strong: #ebcb8b;
+  --inline-code: #b48ead;
+  --code-fg: #d8dee9;
+  --code-bg: rgba(36, 41, 51, 0.75);
+  --code-col-bg: rgba(36, 41, 51, 0.45);
+  --option-fg: #2e3440;
+  --option-bg: #eceff4;
 }
 
-[data-theme="forest"] {
+/* ---- Dracula: purple on charcoal (draculatheme.com) */
+[data-theme="dracula"] {
   color-scheme: dark;
-  --bg-panel: rgba(11, 26, 20, 0.94);
-  --bg-page: #0b1a14;
-  --fg: #e8f5ec;
-  --accent: #4ade80;
-  --accent-fg: #06200f;
-  --accent-2: #86efac;
-  --ok: #4ade80;
-  --danger: #f87171;
-  --danger-fg: #fca5a5;
-  --warn: #fcd34d;
-  --strong: #fcd34d;
-  --inline-code: #bbf7d0;
-  --code-fg: #ecfdf5;
-  --code-bg: rgba(0, 12, 6, 0.5);
-  --code-col-bg: rgba(0, 12, 6, 0.3);
-  --option-fg: #0b1a14;
-  --option-bg: #ffffff;
+  --bg-panel: rgba(40, 42, 54, 0.95);
+  --bg-page: #282a36;
+  --fg: #f8f8f2;
+  --accent: #bd93f9;
+  --accent-fg: #282a36;
+  --accent-2: #8be9fd;
+  --ok: #50fa7b;
+  --danger: #ff5555;
+  --danger-fg: #ff8080;
+  --warn: #f1fa8c;
+  --strong: #ffb86c;
+  --inline-code: #ff79c6;
+  --code-fg: #f8f8f2;
+  --code-bg: rgba(33, 34, 44, 0.8);
+  --code-col-bg: rgba(33, 34, 44, 0.5);
+  --option-fg: #282a36;
+  --option-bg: #f8f8f2;
 }
 
-[data-theme="sunset"] {
+/* ---- Solarized Dark: the classic teal-black */
+[data-theme="solarized-dark"] {
   color-scheme: dark;
-  --bg-panel: rgba(34, 18, 16, 0.94);
-  --bg-page: #221210;
-  --fg: #fbeee6;
-  --accent: #fb923c;
-  --accent-fg: #2a120a;
-  --accent-2: #fdba74;
-  --ok: #4ade80;
-  --danger: #f87171;
-  --danger-fg: #fca5a5;
-  --warn: #fde68a;
-  --strong: #fde68a;
-  --inline-code: #fed7aa;
-  --code-fg: #fff7ed;
-  --code-bg: rgba(20, 6, 2, 0.5);
-  --code-col-bg: rgba(20, 6, 2, 0.3);
-  --option-fg: #221210;
-  --option-bg: #ffffff;
+  --bg-panel: rgba(0, 43, 54, 0.95);
+  --bg-page: #002b36;
+  --fg: #eee8d5;
+  --accent: #268bd2;
+  --accent-fg: #fdf6e3;
+  --accent-2: #2aa198;
+  --ok: #859900;
+  --danger: #dc322f;
+  --danger-fg: #f28b88;
+  --warn: #b58900;
+  --strong: #cb4b16;
+  --inline-code: #d33682;
+  --code-fg: #eee8d5;
+  --code-bg: rgba(0, 33, 43, 0.8);
+  --code-col-bg: rgba(0, 33, 43, 0.5);
+  --option-fg: #002b36;
+  --option-bg: #fdf6e3;
 }
 
-[data-theme="violet"] {
+/* ---- Solarized Light: the warm cream counterpart */
+[data-theme="solarized-light"] {
+  color-scheme: light;
+  --bg-panel: rgba(253, 246, 227, 0.97);
+  --bg-page: #fdf6e3;
+  --fg: #073642;
+  --accent: #268bd2;
+  --accent-fg: #fdf6e3;
+  --accent-2: #2aa198;
+  --ok: #859900;
+  --danger: #dc322f;
+  --danger-fg: #b3261f;
+  --warn: #b58900;
+  --strong: #cb4b16;
+  --inline-code: #d33682;
+  --code-fg: #073642;
+  --code-bg: rgba(238, 232, 213, 0.75);
+  --code-col-bg: rgba(238, 232, 213, 0.45);
+  --option-fg: #073642;
+  --option-bg: #fdf6e3;
+}
+
+/* ---- Gruvbox: retro warm browns with orange (morhetz/gruvbox) */
+[data-theme="gruvbox"] {
   color-scheme: dark;
-  --bg-panel: rgba(24, 16, 38, 0.94);
-  --bg-page: #181026;
-  --fg: #f1ebfa;
-  --accent: #a78bfa;
-  --accent-fg: #170b2a;
-  --accent-2: #c4b5fd;
-  --ok: #34d399;
-  --danger: #fb7185;
-  --danger-fg: #fda4af;
-  --warn: #fcd34d;
-  --strong: #fcd34d;
-  --inline-code: #ddd6fe;
-  --code-fg: #f5f3ff;
-  --code-bg: rgba(8, 2, 20, 0.5);
-  --code-col-bg: rgba(8, 2, 20, 0.3);
-  --option-fg: #181026;
-  --option-bg: #ffffff;
+  --bg-panel: rgba(40, 40, 40, 0.95);
+  --bg-page: #282828;
+  --fg: #ebdbb2;
+  --accent: #fe8019;
+  --accent-fg: #282828;
+  --accent-2: #fabd2f;
+  --ok: #b8bb26;
+  --danger: #fb4934;
+  --danger-fg: #fb4934;
+  --warn: #fabd2f;
+  --strong: #fabd2f;
+  --inline-code: #d3869b;
+  --code-fg: #ebdbb2;
+  --code-bg: rgba(29, 32, 33, 0.8);
+  --code-col-bg: rgba(29, 32, 33, 0.5);
+  --option-fg: #282828;
+  --option-bg: #ebdbb2;
+}
+
+/* ---- Catppuccin Mocha: soft pastels on deep navy (catppuccin.com) */
+[data-theme="catppuccin"] {
+  color-scheme: dark;
+  --bg-panel: rgba(30, 30, 46, 0.95);
+  --bg-page: #1e1e2e;
+  --fg: #cdd6f4;
+  --accent: #cba6f7;
+  --accent-fg: #1e1e2e;
+  --accent-2: #89b4fa;
+  --ok: #a6e3a1;
+  --danger: #f38ba8;
+  --danger-fg: #f38ba8;
+  --warn: #f9e2af;
+  --strong: #fab387;
+  --inline-code: #f5c2e7;
+  --code-fg: #cdd6f4;
+  --code-bg: rgba(17, 17, 27, 0.8);
+  --code-col-bg: rgba(17, 17, 27, 0.5);
+  --option-fg: #1e1e2e;
+  --option-bg: #cdd6f4;
+}
+
+/* ---- Tokyo Night: neon blues on near-black (enkia/tokyo-night) */
+[data-theme="tokyo-night"] {
+  color-scheme: dark;
+  --bg-panel: rgba(26, 27, 38, 0.95);
+  --bg-page: #1a1b26;
+  --fg: #c0caf5;
+  --accent: #7aa2f7;
+  --accent-fg: #1a1b26;
+  --accent-2: #7dcfff;
+  --ok: #9ece6a;
+  --danger: #f7768e;
+  --danger-fg: #f7768e;
+  --warn: #e0af68;
+  --strong: #ff9e64;
+  --inline-code: #bb9af7;
+  --code-fg: #c0caf5;
+  --code-bg: rgba(22, 22, 30, 0.8);
+  --code-col-bg: rgba(22, 22, 30, 0.5);
+  --option-fg: #1a1b26;
+  --option-bg: #c0caf5;
+}
+
+/* ---- Rosé Pine: muted rose and gold on plum (rosepinetheme.com) */
+[data-theme="rose-pine"] {
+  color-scheme: dark;
+  --bg-panel: rgba(25, 23, 36, 0.95);
+  --bg-page: #191724;
+  --fg: #e0def4;
+  --accent: #ebbcba;
+  --accent-fg: #191724;
+  --accent-2: #c4a7e7;
+  --ok: #9ccfd8;
+  --danger: #eb6f92;
+  --danger-fg: #eb6f92;
+  --warn: #f6c177;
+  --strong: #f6c177;
+  --inline-code: #9ccfd8;
+  --code-fg: #e0def4;
+  --code-bg: rgba(31, 29, 46, 0.8);
+  --code-col-bg: rgba(31, 29, 46, 0.5);
+  --option-fg: #191724;
+  --option-bg: #e0def4;
+}
+
+/* ---- Monokai: the original high-contrast editor palette */
+[data-theme="monokai"] {
+  color-scheme: dark;
+  --bg-panel: rgba(39, 40, 34, 0.95);
+  --bg-page: #272822;
+  --fg: #f8f8f2;
+  --accent: #a6e22e;
+  --accent-fg: #272822;
+  --accent-2: #66d9ef;
+  --ok: #a6e22e;
+  --danger: #f92672;
+  --danger-fg: #f92672;
+  --warn: #e6db74;
+  --strong: #fd971f;
+  --inline-code: #ae81ff;
+  --code-fg: #f8f8f2;
+  --code-bg: rgba(30, 31, 28, 0.8);
+  --code-col-bg: rgba(30, 31, 28, 0.5);
+  --option-fg: #272822;
+  --option-bg: #f8f8f2;
 }
 
 /* Derived tones: the same recipe for every theme. */

@@ -3,7 +3,7 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
 body {
-  font: 13px/1.45 "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
+  font: 13px/1.45 var(--font-ui);
   color: var(--fg);
   user-select: text;
 }

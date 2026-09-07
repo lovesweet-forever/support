@@ -14,10 +14,15 @@ export const DEFAULT_LANGUAGE = 'en';
 export const THEMES = [
   { id: 'dark', label: 'Dark', swatch: '#10131a', accent: '#60a5fa' },
   { id: 'light', label: 'Light', swatch: '#f4f6fa', accent: '#2563eb' },
-  { id: 'ocean', label: 'Ocean', swatch: '#081628', accent: '#22d3ee' },
-  { id: 'forest', label: 'Forest', swatch: '#0b1a14', accent: '#4ade80' },
-  { id: 'sunset', label: 'Sunset', swatch: '#221210', accent: '#fb923c' },
-  { id: 'violet', label: 'Violet', swatch: '#181026', accent: '#a78bfa' }
+  { id: 'nord', label: 'Nord', swatch: '#2e3440', accent: '#88c0d0' },
+  { id: 'dracula', label: 'Dracula', swatch: '#282a36', accent: '#bd93f9' },
+  { id: 'solarized-dark', label: 'Solarized Dark', swatch: '#002b36', accent: '#268bd2' },
+  { id: 'solarized-light', label: 'Solarized Light', swatch: '#fdf6e3', accent: '#268bd2' },
+  { id: 'gruvbox', label: 'Gruvbox', swatch: '#282828', accent: '#fe8019' },
+  { id: 'catppuccin', label: 'Catppuccin', swatch: '#1e1e2e', accent: '#cba6f7' },
+  { id: 'tokyo-night', label: 'Tokyo Night', swatch: '#1a1b26', accent: '#7aa2f7' },
+  { id: 'rose-pine', label: 'Rosé Pine', swatch: '#191724', accent: '#ebbcba' },
+  { id: 'monokai', label: 'Monokai', swatch: '#272822', accent: '#a6e22e' }
 ];
 
 export const DEFAULT_THEME = 'dark';
@@ -29,6 +34,49 @@ export function themeById(id) {
 /** Sets the theme on the document root; unknown ids fall back to the default. */
 export function applyTheme(id, doc = document) {
   doc.documentElement.dataset.theme = themeById(id).id;
+}
+
+// UI fonts. No font files ship with the app (it works offline), so every entry
+// is a stack of fonts that come with Windows / macOS / mainstream Linux, with
+// a generic fallback at the end. `fontCustom` (a font name typed in Setup)
+// takes precedence when the user has something else installed, e.g. Inter.
+export const FONTS = [
+  { id: 'system', label: 'System', hint: 'Segoe UI / SF Pro',
+    stack: '"Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", sans-serif' },
+  { id: 'humanist', label: 'Calibri / Avenir', hint: 'soft, compact',
+    stack: 'Calibri, "Avenir Next", Avenir, Candara, "Gill Sans", "Noto Sans", Ubuntu, sans-serif' },
+  { id: 'helvetica', label: 'Helvetica / Arial', hint: 'neutral classic',
+    stack: '"Helvetica Neue", Helvetica, Arial, "Liberation Sans", sans-serif' },
+  { id: 'verdana', label: 'Verdana', hint: 'wide, very legible',
+    stack: 'Verdana, Geneva, "DejaVu Sans", sans-serif' },
+  { id: 'trebuchet', label: 'Trebuchet', hint: 'friendly, rounded',
+    stack: '"Trebuchet MS", "Lucida Grande", "Fira Sans", sans-serif' },
+  { id: 'geometric', label: 'Bahnschrift / Futura', hint: 'geometric, modern',
+    stack: 'Bahnschrift, Futura, "Avenir Next", "Century Gothic", "URW Gothic", sans-serif' },
+  { id: 'georgia', label: 'Georgia', hint: 'serif, easy on the eyes',
+    stack: 'Georgia, "Times New Roman", "Liberation Serif", serif' },
+  { id: 'palatino', label: 'Palatino / Cambria', hint: 'serif, bookish',
+    stack: '"Palatino Linotype", Palatino, Cambria, "Book Antiqua", "Noto Serif", serif' },
+  { id: 'mono', label: 'Monospace', hint: 'Cascadia / SF Mono',
+    stack: '"Cascadia Code", "JetBrains Mono", "Fira Code", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace' }
+];
+
+export const DEFAULT_FONT = 'system';
+
+export function fontById(id) {
+  return FONTS.find((f) => f.id === id) || FONTS[0];
+}
+
+/** The CSS font-family for a settings object ({ font, fontCustom }). */
+export function fontStack({ font, fontCustom } = {}) {
+  const base = fontById(font).stack;
+  const custom = String(fontCustom || '').trim().replace(/["\\;]/g, '');
+  return custom ? `"${custom}", ${base}` : base;
+}
+
+/** Sets the UI font on the document root (the --font-ui variable in themes.css). */
+export function applyFont(settings, doc = document) {
+  doc.documentElement.style.setProperty('--font-ui', fontStack(settings));
 }
 
 export function languageByCode(code) {

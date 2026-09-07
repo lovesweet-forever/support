@@ -22,6 +22,9 @@ export const DEFAULT_SETTINGS = {
   autoAnswer: false,
   answerFontSize: 15,
   theme: 'dark',
+  // UI font id (see shared/constants.js FONTS) and an optional installed font name
+  font: 'system',
+  fontCustom: '',
 
   // Window (persisted geometry lives in the main process store)
   panelOpacity: 0.96
