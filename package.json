@@ -1,0 +1,149 @@
+{
+  "name": "support",
+  "version": "1.0.1",
+  "description": "Desktop interview copilot for Windows, macOS and Linux — live transcription of the interviewer plus AI answers grounded in your resume, in an always-on-top panel. Works with Zoom/Teams/Meet desktop apps via system audio.",
+  "author": {
+    "name": "Marius Morar",
+    "email": "lovesweet.forever.9@gmail.com"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/lovesweet-forever/support",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lovesweet-forever/support.git"
+  },
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist:win": "electron-builder --win --x64",
+    "dist:mac": "electron-builder --mac --arm64 --x64",
+    "dist:mac:arm64": "electron-builder --mac --arm64",
+    "dist:mac:x64": "electron-builder --mac --x64",
+    "dist:linux": "electron-builder --linux --x64",
+    "dist:linux:appimage": "electron-builder --linux AppImage --x64",
+    "dist:linux:deb": "electron-builder --linux deb --x64",
+    "dist:linux:arm64": "electron-builder --linux AppImage --arm64",
+    "dist:linux:tar": "electron-builder --linux --dir --x64 && node make-linux-tar.js dist/linux-unpacked dist/InterviewCopilot-1.0.1-x64.tar.gz InterviewCopilot-1.0.1-x64"
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.mariusmorar.interviewcopilot",
+    "productName": "Interview Copilot",
+    "files": [
+      "src/**/*",
+      "!**/*.map"
+    ],
+    "extraResources": [
+      {
+        "from": "config",
+        "to": "config",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "InterviewCopilot-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "category": "public.app-category.productivity",
+      "artifactName": "InterviewCopilot-${version}-${arch}.${ext}",
+      "minimumSystemVersion": "12.0",
+      "darkModeSupport": true,
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Interview Copilot transcribes your microphone so your side of the conversation appears in the transcript.",
+        "NSAudioCaptureUsageDescription": "Interview Copilot captures the meeting audio so the interviewer's questions can be transcribed."
+      }
+    },
+    "dmg": {
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "category": "Utility",
+      "executableName": "interview-copilot",
+      "artifactName": "InterviewCopilot-${version}-${arch}.${ext}",
+      "synopsis": "Live interview transcription with AI answers in an always-on-top panel",
+      "desktop": {
+        "Name": "Interview Copilot",
+        "Comment": "Live interview transcription with AI answers",
+        "Keywords": "interview;transcription;copilot;"
+      }
+    },
+    "deb": {
+      "depends": [
+        "libgtk-3-0",
+        "libnotify4",
+        "libnss3",
+        "libxss1",
+        "libxtst6",
+        "xdg-utils",
+        "libatspi2.0-0",
+        "libuuid1",
+        "libsecret-1-0",
+        "pulseaudio-utils"
+      ]
+    }
+  }
+}
