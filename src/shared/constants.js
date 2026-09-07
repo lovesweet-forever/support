@@ -9,6 +9,28 @@ export const LANGUAGES = [
 
 export const DEFAULT_LANGUAGE = 'en';
 
+// Colour themes. The id is the <html data-theme> value; the CSS for each lives
+// in renderer/themes.css. `swatch` / `accent` are only for the picker preview.
+export const THEMES = [
+  { id: 'dark', label: 'Dark', swatch: '#10131a', accent: '#60a5fa' },
+  { id: 'light', label: 'Light', swatch: '#f4f6fa', accent: '#2563eb' },
+  { id: 'ocean', label: 'Ocean', swatch: '#081628', accent: '#22d3ee' },
+  { id: 'forest', label: 'Forest', swatch: '#0b1a14', accent: '#4ade80' },
+  { id: 'sunset', label: 'Sunset', swatch: '#221210', accent: '#fb923c' },
+  { id: 'violet', label: 'Violet', swatch: '#181026', accent: '#a78bfa' }
+];
+
+export const DEFAULT_THEME = 'dark';
+
+export function themeById(id) {
+  return THEMES.find((t) => t.id === id) || THEMES[0];
+}
+
+/** Sets the theme on the document root; unknown ids fall back to the default. */
+export function applyTheme(id, doc = document) {
+  doc.documentElement.dataset.theme = themeById(id).id;
+}
+
 export function languageByCode(code) {
   return LANGUAGES.find((l) => l.code === code) || LANGUAGES[0];
 }

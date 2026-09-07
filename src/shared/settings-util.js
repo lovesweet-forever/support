@@ -21,6 +21,7 @@ export const DEFAULT_SETTINGS = {
   transcribeCandidate: true,
   autoAnswer: false,
   answerFontSize: 15,
+  theme: 'dark',
 
   // Window (persisted geometry lives in the main process store)
   panelOpacity: 0.96

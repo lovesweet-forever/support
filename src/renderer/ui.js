@@ -2,7 +2,7 @@
 // itself is the panel (frameless/transparent), so there are no floating-panel
 // or shadow-DOM concerns; the code view is a column inside the same window.
 
-import { LANGUAGES, PROVIDERS, ANSWER_STYLES } from '../shared/constants.js';
+import { LANGUAGES, PROVIDERS, ANSWER_STYLES, THEMES } from '../shared/constants.js';
 import { renderRich, renderCodeOnly, codeResize } from '../shared/render.js';
 
 const shortLabel = (l) => l.replace(/\s*\([^)]*\)\s*$/, '');
@@ -24,6 +24,9 @@ export function buildPanel(root, handlers) {
         </select>
         <select data-lang title="Language">
           ${LANGUAGES.map((l) => `<option value="${l.code}">${l.code.toUpperCase()}</option>`).join('')}
+        </select>
+        <select data-theme title="Theme">
+          ${THEMES.map((t) => `<option value="${t.id}">${t.label}</option>`).join('')}
         </select>
         <button class="icon" data-settings title="Setup">&#9881;</button>
         <button class="icon" data-hide title="Hide (${HIDE_KEY})">&#8211;</button>
@@ -64,6 +67,7 @@ export function buildPanel(root, handlers) {
   const el = {
     audio: $('[data-audio]'), title: $('[data-title]'), start: $('[data-start]'),
     provider: $('[data-provider]'), model: $('[data-model]'), style: $('[data-style]'), lang: $('[data-lang]'),
+    theme: $('[data-theme]'),
     warning: $('[data-warning]'), transcript: $('[data-transcript]'), pending: $('[data-pending]'),
     counter: $('[data-counter]'), content: $('[data-content]'), answer: $('[data-answer]'),
     seam: $('[data-seam]'), codeCol: $('[data-code-col]'), codeBody: $('[data-code-body]'),
@@ -84,6 +88,7 @@ export function buildPanel(root, handlers) {
   $('[data-quit]').onclick = () => handlers.onQuit();
   el.lang.onchange = () => handlers.onLanguage(el.lang.value);
   el.style.onchange = () => handlers.onStyle(el.style.value);
+  el.theme.onchange = () => handlers.onTheme(el.theme.value);
   el.provider.onchange = () => { populateModels(el.provider.value); handlers.onProvider(el.provider.value, el.model.value); };
   el.model.onchange = () => handlers.onModel(el.model.value);
 
@@ -152,6 +157,7 @@ export function buildPanel(root, handlers) {
     setWarning(msg) { el.warning.textContent = msg || ''; },
     setLanguage(code) { el.lang.value = code; },
     setStyle(id) { el.style.value = id; },
+    setTheme(id) { el.theme.value = THEMES.some((t) => t.id === id) ? id : THEMES[0].id; },
     setFont(px) { fontPx = Math.min(28, Math.max(11, Math.round(px))); root.querySelector('.panel').style.setProperty('--answer-font', `${fontPx}px`); },
     setAiConfig({ provider, model, answerStyle, availability: avail }) {
       if (avail) availability = avail;

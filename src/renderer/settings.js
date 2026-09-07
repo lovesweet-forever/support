@@ -1,10 +1,36 @@
-import { PROVIDERS, LANGUAGES, ANSWER_STYLES } from '../shared/constants.js';
+import { PROVIDERS, LANGUAGES, ANSWER_STYLES, THEMES, applyTheme } from '../shared/constants.js';
 
 const api = window.copilot;
 const $ = (id) => document.getElementById(id);
 const KEY_FIELD = { anthropic: 'anthropicKey', openai: 'openaiKey', gemini: 'geminiKey' };
 
 let settings = await api.getSettings();
+applyTheme(settings.theme);
+
+// ---- theme picker -----------------------------------------------------------
+$('themes').innerHTML = THEMES.map(
+  (t) => `<button type="button" class="theme-card" data-theme-id="${t.id}">
+    <span class="swatch" style="background:${t.swatch};--sw-accent:${t.accent}"></span>${t.label}</button>`
+).join('');
+function renderThemeCards() {
+  for (const card of document.querySelectorAll('.theme-card')) {
+    card.classList.toggle('active', card.dataset.themeId === (settings.theme || 'dark'));
+  }
+}
+$('themes').addEventListener('click', (e) => {
+  const card = e.target.closest('.theme-card');
+  if (!card) return;
+  settings.theme = card.dataset.themeId;
+  applyTheme(settings.theme);
+  renderThemeCards();
+  save({ theme: settings.theme });
+});
+renderThemeCards();
+
+// The panel can change the theme too; follow it.
+api.onSettingsChanged((s) => {
+  if (s.theme !== settings.theme) { settings.theme = s.theme; applyTheme(s.theme); renderThemeCards(); }
+});
 
 $('language').innerHTML = LANGUAGES.map((l) => `<option value="${l.code}">${l.label}</option>`).join('');
 $('answerStyle').innerHTML = Object.entries(ANSWER_STYLES).map(([id, s]) => `<option value="${id}">${s.label}</option>`).join('');

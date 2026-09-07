@@ -23,6 +23,8 @@ const DEFAULTS = {
   autoAnswer: false,
   answerFontSize: 15,
   panelOpacity: 0.96,
+  // Colour theme id (see shared/constants.js THEMES)
+  theme: 'dark',
   // window geometry
   panelBounds: null,
   codeShare: 0.25,

@@ -5,7 +5,7 @@
 import { buildPanel } from './ui.js';
 import { AudioSession } from './audio.js';
 import { providerAvailability, firstAvailableProvider } from '../shared/settings-util.js';
-import { PROVIDERS } from '../shared/constants.js';
+import { PROVIDERS, applyTheme } from '../shared/constants.js';
 
 const api = window.copilot;
 let settings = await api.getSettings();
@@ -46,6 +46,7 @@ const ui = buildPanel(document.getElementById('root'), {
   onQuit: () => api.quit(),
   onLanguage: (language) => { save({ language }); audio.setLanguage(language); },
   onStyle: (answerStyle) => save({ answerStyle }),
+  onTheme: (theme) => { applyTheme(theme); save({ theme }); },
   onProvider: (provider, model) => save({ provider, model }),
   onModel: (model) => save({ model }),
   onFont: (px) => { ui.setFont(px); save({ answerFontSize: clampFont(px) }); },
@@ -142,6 +143,8 @@ function pushAiConfig(s) {
 
 function applySettings(s) {
   settings = s;
+  applyTheme(s.theme);
+  ui.setTheme(s.theme);
   ui.setLanguage(s.language);
   ui.setStyle(s.answerStyle);
   ui.setFont(s.answerFontSize);

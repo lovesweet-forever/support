@@ -1,0 +1,160 @@
+/* Colour themes for the panel and the setup window. Each theme sets a handful
+ * of base colours on <html data-theme="…">; everything else (muted text,
+ * surfaces, borders, soft tints) is derived with color-mix() below, so a theme
+ * is ~15 lines. The list of themes lives in shared/constants.js (THEMES). */
+
+:root, [data-theme="dark"] {
+  color-scheme: dark;
+  --bg-panel: rgba(16, 19, 26, 0.94);
+  --bg-page: #10131a;
+  --fg: #f2f4f8;
+  --accent: #60a5fa;
+  --accent-fg: #0b0d12;
+  --accent-2: #93c5fd;
+  --ok: #34d399;
+  --danger: #f87171;
+  --danger-fg: #fca5a5;
+  --warn: #fcd34d;
+  --strong: #fcd34d;
+  --inline-code: #c4b5fd;
+  --code-fg: #e5e7eb;
+  --code-bg: rgba(0, 0, 0, 0.45);
+  --code-col-bg: rgba(0, 0, 0, 0.25);
+  --option-fg: #10131a;
+  --option-bg: #ffffff;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --bg-panel: rgba(248, 249, 252, 0.97);
+  --bg-page: #f4f6fa;
+  --fg: #1b1f27;
+  --accent: #2563eb;
+  --accent-fg: #ffffff;
+  --accent-2: #1d4ed8;
+  --ok: #059669;
+  --danger: #dc2626;
+  --danger-fg: #b91c1c;
+  --warn: #b45309;
+  --strong: #9a3412;
+  --inline-code: #6d28d9;
+  --code-fg: #1f2937;
+  --code-bg: rgba(15, 23, 42, 0.06);
+  --code-col-bg: rgba(15, 23, 42, 0.04);
+  --option-fg: #1b1f27;
+  --option-bg: #ffffff;
+}
+
+[data-theme="ocean"] {
+  color-scheme: dark;
+  --bg-panel: rgba(8, 22, 40, 0.94);
+  --bg-page: #081628;
+  --fg: #e6f0fa;
+  --accent: #22d3ee;
+  --accent-fg: #06222b;
+  --accent-2: #67e8f9;
+  --ok: #34d399;
+  --danger: #fb7185;
+  --danger-fg: #fda4af;
+  --warn: #fde68a;
+  --strong: #fde68a;
+  --inline-code: #a5f3fc;
+  --code-fg: #e0f2fe;
+  --code-bg: rgba(0, 10, 25, 0.5);
+  --code-col-bg: rgba(0, 10, 25, 0.3);
+  --option-fg: #081628;
+  --option-bg: #ffffff;
+}
+
+[data-theme="forest"] {
+  color-scheme: dark;
+  --bg-panel: rgba(11, 26, 20, 0.94);
+  --bg-page: #0b1a14;
+  --fg: #e8f5ec;
+  --accent: #4ade80;
+  --accent-fg: #06200f;
+  --accent-2: #86efac;
+  --ok: #4ade80;
+  --danger: #f87171;
+  --danger-fg: #fca5a5;
+  --warn: #fcd34d;
+  --strong: #fcd34d;
+  --inline-code: #bbf7d0;
+  --code-fg: #ecfdf5;
+  --code-bg: rgba(0, 12, 6, 0.5);
+  --code-col-bg: rgba(0, 12, 6, 0.3);
+  --option-fg: #0b1a14;
+  --option-bg: #ffffff;
+}
+
+[data-theme="sunset"] {
+  color-scheme: dark;
+  --bg-panel: rgba(34, 18, 16, 0.94);
+  --bg-page: #221210;
+  --fg: #fbeee6;
+  --accent: #fb923c;
+  --accent-fg: #2a120a;
+  --accent-2: #fdba74;
+  --ok: #4ade80;
+  --danger: #f87171;
+  --danger-fg: #fca5a5;
+  --warn: #fde68a;
+  --strong: #fde68a;
+  --inline-code: #fed7aa;
+  --code-fg: #fff7ed;
+  --code-bg: rgba(20, 6, 2, 0.5);
+  --code-col-bg: rgba(20, 6, 2, 0.3);
+  --option-fg: #221210;
+  --option-bg: #ffffff;
+}
+
+[data-theme="violet"] {
+  color-scheme: dark;
+  --bg-panel: rgba(24, 16, 38, 0.94);
+  --bg-page: #181026;
+  --fg: #f1ebfa;
+  --accent: #a78bfa;
+  --accent-fg: #170b2a;
+  --accent-2: #c4b5fd;
+  --ok: #34d399;
+  --danger: #fb7185;
+  --danger-fg: #fda4af;
+  --warn: #fcd34d;
+  --strong: #fcd34d;
+  --inline-code: #ddd6fe;
+  --code-fg: #f5f3ff;
+  --code-bg: rgba(8, 2, 20, 0.5);
+  --code-col-bg: rgba(8, 2, 20, 0.3);
+  --option-fg: #181026;
+  --option-bg: #ffffff;
+}
+
+/* Derived tones: the same recipe for every theme. */
+:root {
+  --fg-muted: color-mix(in srgb, var(--fg) 62%, transparent);
+  --fg-dim: color-mix(in srgb, var(--fg) 50%, transparent);
+  --fg-faint: color-mix(in srgb, var(--fg) 45%, transparent);
+  --fg-ghost: color-mix(in srgb, var(--fg) 35%, transparent);
+  --surface: color-mix(in srgb, var(--fg) 5%, transparent);
+  --surface-2: color-mix(in srgb, var(--fg) 8%, transparent);
+  --surface-3: color-mix(in srgb, var(--fg) 10%, transparent);
+  --surface-hover: color-mix(in srgb, var(--fg) 16%, transparent);
+  --border: color-mix(in srgb, var(--fg) 9%, transparent);
+  --border-strong: color-mix(in srgb, var(--fg) 14%, transparent);
+  --accent-soft: color-mix(in srgb, var(--accent) 8%, transparent);
+  --accent-soft-2: color-mix(in srgb, var(--accent) 12%, transparent);
+  --accent-border: color-mix(in srgb, var(--accent) 35%, transparent);
+  --accent-2-border: color-mix(in srgb, var(--accent-2) 50%, transparent);
+  --ok-ring: color-mix(in srgb, var(--ok) 20%, transparent);
+  --ok-ring-fade: color-mix(in srgb, var(--ok) 5%, transparent);
+  --ok-soft: color-mix(in srgb, var(--ok) 7%, transparent);
+  --ok-border: color-mix(in srgb, var(--ok) 30%, transparent);
+  --danger-ring: color-mix(in srgb, var(--danger) 20%, transparent);
+  --danger-soft: color-mix(in srgb, var(--danger) 12%, transparent);
+  --danger-border: color-mix(in srgb, var(--danger) 25%, transparent);
+  --warn-soft: color-mix(in srgb, var(--warn) 9%, transparent);
+  --warn-border: color-mix(in srgb, var(--warn) 22%, transparent);
+  --warn-ring: color-mix(in srgb, var(--warn) 15%, transparent);
+  --warn-border-strong: color-mix(in srgb, var(--warn) 60%, transparent);
+  --dot-off: #6b7280;
+}

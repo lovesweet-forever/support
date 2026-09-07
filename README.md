@@ -84,6 +84,8 @@ Click the **⚙** in the panel (or the tray icon → Setup) and fill in:
 - **Resume**, **job description**, **custom prompt**, answer style, language.
 - **Provider + model**, and the **API keys** (Anthropic / OpenAI / Gemini, plus **Deepgram** for
   transcription).
+- **Theme** — Dark (default), Light, Ocean, Forest, Sunset or Violet. The panel header has the same
+  picker, and a change applies to both windows immediately.
 
 Keys can instead go in **`config/keys.json`** next to the app (a `keys.example.json` is included).
 Keys in that file override the UI fields and lock them — the same behaviour as the extension.
