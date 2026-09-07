@@ -23,6 +23,8 @@ const DEFAULTS = {
   openaiKey: '',
   geminiKey: '',
   deepgramKey: '',
+  // Outbound proxy for all API traffic ('' = system settings); see main/proxy.js
+  proxyUrl: '',
   transcribeCandidate: true,
   autoAnswer: false,
   answerFontSize: 15,

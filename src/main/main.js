@@ -25,6 +25,7 @@ const fs = require('fs');
 const path = require('path');
 const settings = require('./settings');
 const db = require('./db');
+const proxy = require('./proxy');
 
 let panel = null;
 let settingsWin = null;
@@ -330,6 +331,7 @@ ipcMain.handle('settings:set', (_e, patch) => {
   for (const [k, v] of Object.entries(patch || {})) (db.PROFILE_FIELDS.includes(k) ? profilePatch : rest)[k] = v;
   if (Object.keys(profilePatch).length && activeProfileId()) db.updateProfile(activeProfileId(), profilePatch);
   if (Object.keys(rest).length) settings.set(rest);
+  if (rest.proxyUrl !== undefined) proxy.applyProxy(session.defaultSession, rest.proxyUrl).catch(() => {});
   // Push the change to whichever window did not originate it.
   return broadcastSettings();
 });
@@ -373,6 +375,10 @@ ipcMain.handle('sessions:end', (_e, id) => db.endSession(id));
 ipcMain.handle('sessions:turn', (_e, id, turn) => db.addTurn(id, turn));
 ipcMain.handle('sessions:turn-update', (_e, turnId, patch) => db.updateTurn(turnId, patch));
 ipcMain.handle('sessions:transcript', (_e, id, entry) => db.addTranscript(id, entry));
+
+// Proxy test from Setup: tries the (possibly unsaved) address against every
+// provider endpoint in a throwaway session.
+ipcMain.handle('proxy:check', (_e, url) => proxy.checkProxy(url));
 ipcMain.handle('open-settings', () => createSettingsWindow());
 
 // The Setup page reports its theme colours so the window controls overlay and
@@ -487,9 +493,15 @@ ipcMain.handle('linux:release-monitor-source', () => releaseMonitorSource());
 
 // --------------------------------------------------------------- lifecycle
 
+// Proxies that need a username / password challenge the first request.
+app.on('login', proxy.handleLogin);
+
 app.whenReady().then(async () => {
   await db.open();
   ensureProfiles();
+  // Route every request (AI providers, Deepgram) through the configured proxy
+  // before any window can make one.
+  await proxy.applyProxy(session.defaultSession, settings.get().proxyUrl).catch(() => {});
   installAppMenu();
   wireLoopbackAudio();
   createPanel();

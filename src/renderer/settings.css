@@ -62,7 +62,17 @@ input.from-file { background: var(--ok-soft); border-color: var(--ok-border); }
 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; }
 /* Profile picker row: the select takes the width, buttons sit beside it. */
 .row { display: flex; gap: 8px; align-items: stretch; }
-.row select { flex: 1; width: auto; }
+.row select, .row input { flex: 1; width: auto; min-width: 0; }
+.row button:disabled { opacity: .5; }
+/* Proxy check output */
+.proxy-result { margin-top: 8px; font-size: 12px; }
+.proxy-result:empty { display: none; }
+.proxy-result .proxy-head { margin-bottom: 4px; font-weight: 600; }
+.proxy-result.good .proxy-head { color: var(--ok); }
+.proxy-result.bad .proxy-head, .proxy-result.bad:not(:has(.proxy-line)) { color: var(--danger-fg); }
+.proxy-line { font-variant-numeric: tabular-nums; }
+.proxy-line.ok { color: var(--ok); }
+.proxy-line.bad { color: var(--danger-fg); }
 .row button { padding: 0 12px; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--fg); background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: 7px; }
 .row button:hover { background: var(--surface-hover); }
 #profileDelete:hover { color: var(--danger-fg); border-color: var(--danger-border); background: var(--danger-soft); }

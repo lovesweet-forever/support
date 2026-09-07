@@ -236,6 +236,40 @@ $('modelCustom').addEventListener('input', () => save({ model: $('modelCustom').
 bindCheck('transcribeCandidate', 'transcribeCandidate');
 bindCheck('autoAnswer', 'autoAnswer');
 
+// ---- proxy ------------------------------------------------------------------
+$('proxyUrl').value = settings.proxyUrl || '';
+$('proxyUrl').addEventListener('input', () => save({ proxyUrl: $('proxyUrl').value.trim() }));
+$('proxyCheck').addEventListener('click', async () => {
+  const btn = $('proxyCheck');
+  const out = $('proxyResult');
+  btn.disabled = true;
+  out.className = 'proxy-result';
+  out.textContent = 'Checking… (up to 10 s per endpoint)';
+  try {
+    const res = await api.checkProxy($('proxyUrl').value);
+    out.textContent = '';
+    if (res.error) { out.className = 'proxy-result bad'; out.textContent = res.error; return; }
+    const head = document.createElement('div');
+    head.className = 'proxy-head';
+    head.textContent = res.ok
+      ? `Proxy works (${res.proxy === 'system' ? 'system settings' : res.proxy}): all four services reachable.`
+      : `Some services are not reachable through ${res.proxy === 'system' ? 'the system settings' : res.proxy}.`;
+    out.append(head);
+    for (const r of res.results) {
+      const line = document.createElement('div');
+      line.className = `proxy-line ${r.ok ? 'ok' : 'bad'}`;
+      line.textContent = r.ok ? `✓ ${r.name} — ${r.ms} ms (HTTP ${r.status})` : `✗ ${r.name} — ${r.error} (${r.ms} ms)`;
+      out.append(line);
+    }
+    out.className = `proxy-result ${res.ok ? 'good' : 'bad'}`;
+  } catch (err) {
+    out.className = 'proxy-result bad';
+    out.textContent = `Check failed: ${String(err.message || err).replace(/^.*?:\s*Error:\s*/, '')}`;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
 // ---- capture devices --------------------------------------------------------
 // Windows captures system audio through Electron's loopback, so the picker is
 // only needed for unusual setups; macOS has no loopback and needs a virtual

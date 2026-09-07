@@ -18,6 +18,8 @@ export const DEFAULT_SETTINGS = {
   openaiKey: '',
   geminiKey: '',
   deepgramKey: '',
+  // Outbound proxy for all API traffic ('' = system settings)
+  proxyUrl: '',
 
   // Capture / UI
   transcribeCandidate: true,

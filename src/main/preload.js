@@ -35,6 +35,8 @@ contextBridge.exposeInMainWorld('copilot', {
   /** A retried question: replace the saved answer of an existing turn. */
   updateTurn: (turnId, patch) => ipcRenderer.invoke('sessions:turn-update', turnId, patch),
   addTranscript: (sessionId, entry) => ipcRenderer.invoke('sessions:transcript', sessionId, entry),
+  /** Test a proxy address against the provider endpoints; see main/proxy.js checkProxy. */
+  checkProxy: (url) => ipcRenderer.invoke('proxy:check', url),
   /** Save the session report as a PDF; resolves to { path } | { canceled } | { error }. */
   exportPdf: (payload) => ipcRenderer.invoke('report:export-pdf', payload),
   /** Screenshot of the display the panel is on, as { mime, data (base64), width, height }. */

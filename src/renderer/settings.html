@@ -115,6 +115,17 @@
       </fieldset>
 
       <fieldset>
+        <legend>Network</legend>
+        <label for="proxyUrl">Proxy (optional)</label>
+        <div class="row">
+          <input type="text" id="proxyUrl" placeholder="http://127.0.0.1:7890  ·  socks5://127.0.0.1:1080  ·  http://user:pass@host:port" spellcheck="false" />
+          <button type="button" id="proxyCheck">Check proxy</button>
+        </div>
+        <p class="hint">Where OpenAI, Anthropic, Gemini or Deepgram are blocked (mainland China, Hong Kong…), route all of the app's API traffic through a proxy: the address of your VPN / proxy client (Clash, V2Ray, Shadowsocks… usually a local port). Leave empty to use the system proxy settings. Saves as you type and takes effect immediately.</p>
+        <div class="proxy-result" id="proxyResult"></div>
+      </fieldset>
+
+      <fieldset>
         <legend>Capture</legend>
         <div class="check"><input type="checkbox" id="transcribeCandidate" /><label for="transcribeCandidate">Also transcribe my microphone (shows both sides, gives follow-up context)</label></div>
         <div class="check"><input type="checkbox" id="autoAnswer" /><label for="autoAnswer">Answer automatically when a question is detected (off = you press Send / Enter)</label></div>

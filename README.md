@@ -112,6 +112,21 @@ interview: the profile picker, resume, job description, custom prompt, answer st
   It goes to the AI together with the resume and job description, so the next round stays
   consistent with what was already said even if the session itself is gone.
 
+### Proxy (blocked regions)
+
+If the provider endpoints are unreachable where you are (mainland China, Hong Kong…), set a
+**proxy** under Setup → Network: the address of your VPN / proxy client, e.g. `http://127.0.0.1:7890`
+or `socks5://127.0.0.1:1080` (credentials as `http://user:pass@host:port`). It routes all of the
+app's API traffic — OpenAI, Anthropic, Gemini and the Deepgram audio stream — and takes effect
+immediately. **Check proxy** tests the address you typed against all four services and shows the
+round-trip time for each; leave the field empty to use the system proxy settings.
+
+A proxy that needs a username / password is handled through a loopback relay the app runs on
+127.0.0.1: the relay adds the login to every tunnel, because Chromium can answer the proxy's
+challenge for ordinary requests but not for a WebSocket handshake, and the Deepgram audio stream
+is a WebSocket (that is what "Deepgram socket error" right after Start meant). Both http(s) and
+socks5 proxies with credentials work this way; the check uses the same path as the app.
+
 Keys can instead go in **`config/keys.json`** next to the app (a `keys.example.json` is included).
 Keys in that file pre-fill any field you have left empty; a key typed in Setup overrides the file,
 and Remove falls back to the file again. Fields show only the first and last 5 characters of a
