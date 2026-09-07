@@ -73,11 +73,13 @@ export function buildPanel(root, handlers) {
           <button class="mini" data-attach title="Attach images, PDFs or text/code files (or paste / drop them)">Attach</button>
           <input type="file" data-file multiple hidden accept="image/*,.pdf,text/*,.txt,.md,.json,.csv,.xml,.yaml,.yml,.sql,.js,.ts,.tsx,.jsx,.py,.java,.cs,.go,.rs,.rb,.php,.kt,.swift,.c,.h,.cpp,.sh,.html,.css" />
           <button class="mini" data-clear>Clear</button>
-          <button class="mini send" data-send>Send</button>
         </span>
       </div>
-      <textarea class="pending" data-pending rows="2"
-        placeholder="The interviewer's words collect here. Edit or type your own — then Enter or Send. Paste or drop a screenshot to attach it."></textarea>
+      <div class="compose">
+        <textarea class="pending" data-pending rows="2"
+          placeholder="The interviewer's words collect here. Edit or type your own — then Enter or Send. Paste or drop a screenshot to attach it."></textarea>
+        <button class="send" data-send title="Send the question (Enter)">Send</button>
+      </div>
       <div class="attachments" data-attachments></div>
       <div class="section-label">
         <span>Answer <span class="qa-counter" data-counter></span></span>
