@@ -61,6 +61,21 @@ export class AnswerEngine {
     this.turns = [];
   }
 
+  /**
+   * Continue an earlier session: replay its questions and answers as the
+   * conversation so far. `saved` is [{ prompt, answer }] in order; turns that
+   * never got an answer are skipped.
+   */
+  setTurns(saved) {
+    this.cancel();
+    let turns = [];
+    for (const t of saved || []) {
+      if (!t.answer) continue;
+      turns = appendTurns(turns, { content: t.prompt || t.question || '' }, t.answer);
+    }
+    this.turns = turns;
+  }
+
   /** A newer question always wins — a stale answer is worse than none. */
   cancel() {
     if (this.controller) {
@@ -116,7 +131,8 @@ export class AnswerEngine {
     };
     const messages = trimAttachments([...this.turns, userTurn], ATTACHMENT_TURNS);
 
-    this.emit({ type: 'start', question, attachments });
+    // `prompt` is the exact message sent, so the session store can replay it later.
+    this.emit({ type: 'start', question, attachments, prompt: userTurn.content });
 
     let full = '';
     try {

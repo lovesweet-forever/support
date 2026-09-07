@@ -61,9 +61,10 @@ const CSS = `
  * @param {Array} p.qa            [{ question, attachments, answer, error, at }]
  * @param {Array} p.transcript    [{ channel, text, at }]
  * @param {object} p.settings     current settings (provider / model / language / style)
- * @param {number} p.startedAt    when the app was opened
+ * @param {number} p.startedAt    when the session started
+ * @param {string} [p.title]      session title (profile name + date)
  */
-export function buildReportHtml({ qa, transcript, settings, startedAt }) {
+export function buildReportHtml({ qa, transcript, settings, startedAt, title }) {
   const now = new Date();
   const provider = PROVIDERS[settings.provider]?.label || settings.provider;
   const style = ANSWER_STYLES[settings.answerStyle]?.label || settings.answerStyle;
@@ -91,8 +92,9 @@ export function buildReportHtml({ qa, transcript, settings, startedAt }) {
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>Interview Copilot report</title><style>${CSS}</style></head>
 <body>
-<h1>Interview report</h1>
+<h1>${esc(title || 'Interview report')}</h1>
 <p class="meta">
+  ${settings.name ? `<span>Profile: ${esc(settings.name)}</span>` : ''}
   <span>Session: ${esc(startedAt ? new Date(startedAt).toLocaleString() : '')} – ${esc(now.toLocaleString())}</span>
   <span>Questions: ${qa.length}</span>
   <span>AI: ${esc(provider)} · ${esc(settings.model)}</span>

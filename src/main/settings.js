@@ -7,6 +7,9 @@ const fs = require('fs');
 const path = require('path');
 
 const DEFAULTS = {
+  // Which profile (main/db.js) is active; its fields (resume, jobDescription,
+  // customPrompt, answerStyle, language, name) overlay these defaults.
+  activeProfileId: null,
   resume: '',
   jobDescription: '',
   customPrompt:

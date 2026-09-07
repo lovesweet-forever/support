@@ -24,6 +24,7 @@ const { execFile } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const settings = require('./settings');
+const db = require('./db');
 
 let panel = null;
 let settingsWin = null;
@@ -260,15 +261,92 @@ function createTray() {
   tray.setContextMenu(menu);
 }
 
-// ------------------------------------------------------------------- IPC
+// ------------------------------------------------------- profiles + settings
 
-ipcMain.handle('settings:get', () => settings.get());
-ipcMain.handle('settings:set', (_e, patch) => {
-  const next = settings.set(patch);
-  // Push the change to whichever window did not originate it.
+// What the renderer sees as "settings": the settings file plus the active
+// profile's fields (resume, job description, custom prompt, style, language,
+// name) laid over it. Writes to those fields go to the profile instead.
+function mergedSettings() {
+  const s = settings.get();
+  const p = s.activeProfileId ? db.getProfile(s.activeProfileId) : null;
+  if (!p) return { ...s, activeProfileId: null, name: '' };
+  return { ...s, activeProfileId: p.id, name: p.name, resume: p.resume, jobDescription: p.jobDescription,
+    customPrompt: p.customPrompt, answerStyle: p.answerStyle, language: p.language };
+}
+
+function broadcastSettings() {
+  const next = mergedSettings();
   for (const w of BrowserWindow.getAllWindows()) w.webContents.send('settings:changed', next);
   return next;
+}
+
+// First run with the database: turn whatever was in settings.json into the
+// first profile. Also heals a dangling activeProfileId.
+function ensureProfiles() {
+  const s = settings.get();
+  let profiles = db.listProfiles();
+  if (!profiles.length) {
+    const p = db.createProfile({ name: s.name || 'Default', resume: s.resume, jobDescription: s.jobDescription,
+      customPrompt: s.customPrompt, answerStyle: s.answerStyle, language: s.language });
+    profiles = [p];
+  }
+  if (!profiles.some((p) => p.id === s.activeProfileId)) settings.set({ activeProfileId: profiles[0].id });
+}
+
+const activeProfileId = () => settings.get().activeProfileId;
+const stamp = () => new Date().toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+
+// ------------------------------------------------------------------- IPC
+
+ipcMain.handle('settings:get', () => mergedSettings());
+ipcMain.handle('settings:set', (_e, patch) => {
+  const profilePatch = {};
+  const rest = {};
+  for (const [k, v] of Object.entries(patch || {})) (db.PROFILE_FIELDS.includes(k) ? profilePatch : rest)[k] = v;
+  if (Object.keys(profilePatch).length && activeProfileId()) db.updateProfile(activeProfileId(), profilePatch);
+  if (Object.keys(rest).length) settings.set(rest);
+  // Push the change to whichever window did not originate it.
+  return broadcastSettings();
 });
+
+ipcMain.handle('profiles:list', () => ({ profiles: db.listProfiles(), activeId: activeProfileId() }));
+ipcMain.handle('profiles:create', (_e, fields) => {
+  const p = db.createProfile({ customPrompt: settings.DEFAULTS.customPrompt, ...(fields || {}) });
+  settings.set({ activeProfileId: p.id });
+  broadcastSettings();
+  return p;
+});
+ipcMain.handle('profiles:duplicate', (_e, id) => {
+  const src = db.getProfile(id);
+  if (!src) return null;
+  const p = db.createProfile({ ...src, name: `${src.name} (copy)` });
+  settings.set({ activeProfileId: p.id });
+  broadcastSettings();
+  return p;
+});
+ipcMain.handle('profiles:select', (_e, id) => {
+  if (db.getProfile(id)) { settings.set({ activeProfileId: id }); broadcastSettings(); }
+  return mergedSettings();
+});
+ipcMain.handle('profiles:delete', (_e, id) => {
+  if (db.listProfiles().length <= 1) return { error: 'Keep at least one profile.' };
+  db.deleteProfile(id);
+  if (activeProfileId() === id) settings.set({ activeProfileId: db.listProfiles()[0].id });
+  broadcastSettings();
+  return { ok: true };
+});
+
+ipcMain.handle('sessions:list', () => db.listSessions(activeProfileId()));
+ipcMain.handle('sessions:create', (_e, title) => {
+  const p = db.getProfile(activeProfileId());
+  return db.createSession(p.id, title || `${p.name} — ${stamp()}`);
+});
+ipcMain.handle('sessions:load', (_e, id) => db.loadSession(id));
+ipcMain.handle('sessions:rename', (_e, id, title) => db.renameSession(id, title));
+ipcMain.handle('sessions:delete', (_e, id) => db.deleteSession(id));
+ipcMain.handle('sessions:end', (_e, id) => db.endSession(id));
+ipcMain.handle('sessions:turn', (_e, id, turn) => db.addTurn(id, turn));
+ipcMain.handle('sessions:transcript', (_e, id, entry) => db.addTranscript(id, entry));
 ipcMain.handle('open-settings', () => createSettingsWindow());
 ipcMain.handle('panel:set-opacity', (_e, value) => {
   if (panel && !panel.isDestroyed()) panel.setOpacity(Math.max(0.2, Math.min(1, value)));
@@ -369,7 +447,9 @@ ipcMain.handle('linux:release-monitor-source', () => releaseMonitorSource());
 
 // --------------------------------------------------------------- lifecycle
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  await db.open();
+  ensureProfiles();
   installAppMenu();
   wireLoopbackAudio();
   createPanel();
@@ -384,6 +464,7 @@ app.whenReady().then(() => {
 
 app.on('will-quit', (e) => {
   globalShortcut.unregisterAll();
+  db.close(); // flushes any pending write
   if (monitorModule) {
     // Don't leave the remapped source behind in PulseAudio.
     e.preventDefault();

@@ -17,6 +17,20 @@ contextBridge.exposeInMainWorld('copilot', {
   setIgnoreMouse: (ignore) => ipcRenderer.invoke('panel:set-ignore-mouse', ignore),
   hidePanel: () => ipcRenderer.invoke('panel:hide'),
   quit: () => ipcRenderer.invoke('quit'),
+  // Profiles (one per company / role) and interview sessions — see main/db.js.
+  listProfiles: () => ipcRenderer.invoke('profiles:list'),
+  createProfile: (fields) => ipcRenderer.invoke('profiles:create', fields),
+  duplicateProfile: (id) => ipcRenderer.invoke('profiles:duplicate', id),
+  selectProfile: (id) => ipcRenderer.invoke('profiles:select', id),
+  deleteProfile: (id) => ipcRenderer.invoke('profiles:delete', id),
+  listSessions: () => ipcRenderer.invoke('sessions:list'),
+  createSession: (title) => ipcRenderer.invoke('sessions:create', title),
+  loadSession: (id) => ipcRenderer.invoke('sessions:load', id),
+  renameSession: (id, title) => ipcRenderer.invoke('sessions:rename', id, title),
+  deleteSession: (id) => ipcRenderer.invoke('sessions:delete', id),
+  endSession: (id) => ipcRenderer.invoke('sessions:end', id),
+  addTurn: (sessionId, turn) => ipcRenderer.invoke('sessions:turn', sessionId, turn),
+  addTranscript: (sessionId, entry) => ipcRenderer.invoke('sessions:transcript', sessionId, entry),
   /** Save the session report as a PDF; resolves to { path } | { canceled } | { error }. */
   exportPdf: (payload) => ipcRenderer.invoke('report:export-pdf', payload),
   /** Screenshot of the display the panel is on, as { mime, data (base64), width, height }. */

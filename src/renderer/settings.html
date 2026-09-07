@@ -12,6 +12,15 @@
 
     <fieldset>
       <legend>Before the interview</legend>
+      <label for="profile">Profile</label>
+      <div class="row">
+        <select id="profile"></select>
+        <button type="button" id="profileNew" title="A blank profile for another company / role">New</button>
+        <button type="button" id="profileCopy" title="Copy this profile (same resume, edit the job description)">Duplicate</button>
+        <button type="button" id="profileDelete" title="Delete this profile and all of its saved sessions">Delete</button>
+      </div>
+      <p class="hint">One profile per company / role. The resume, job description, custom prompt, answer style and language below belong to it, and interview sessions are saved under it — pick a profile and a session in the panel.</p>
+
       <label for="name">Profile name</label>
       <input type="text" id="name" placeholder="e.g. Acme — Senior Backend" />
 

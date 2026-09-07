@@ -39,6 +39,7 @@ async function toggleSession() {
     return;
   }
   ui.setWarning('');
+  await ensureSession();
   audio.start();
 }
 
@@ -57,6 +58,9 @@ const ui = buildPanel(document.getElementById('root'), {
   onPrev: () => showQA(viewIndex - 1),
   onNext: () => showQA(viewIndex + 1),
   onExport: exportPdf,
+  onProfile: (id) => api.selectProfile(id), // the settings:changed broadcast does the rest
+  onSession: (id) => (id ? openSession(id) : closeSession()),
+  onNewSession: newSession,
   onCodeShare: (codeShare) => save({ codeShare })
 });
 
@@ -67,20 +71,96 @@ async function save(patch) {
 }
 
 // ---- Q&A history (same model as the extension) ----------------------------
-const qa = [];
+let qa = [];
 // Every final utterance of both sides, for the PDF report (the on-screen
 // transcript only keeps the last few interviewer turns).
 const transcriptLog = [];
 let viewIndex = -1;
 
-// Save everything since the app was opened — questions, attachments, answers
-// and the spoken transcript — as a PDF, to review after the interview.
+// Save the open session — questions, attachments, answers and the spoken
+// transcript — as a PDF, to review after the interview.
 async function exportPdf() {
   if (!qa.length && !transcriptLog.length) { ui.notice('Nothing to export yet.'); return; }
-  const html = buildReportHtml({ qa, transcript: transcriptLog, settings, startedAt });
-  const res = await api.exportPdf({ html, suggestedName: suggestedReportName(startedAt) });
+  const began = session?.startedAt || startedAt;
+  const html = buildReportHtml({ qa, transcript: transcriptLog, settings, startedAt: began, title: session?.title });
+  const res = await api.exportPdf({ html, suggestedName: suggestedReportName(began) });
   if (res.path) ui.notice(`Saved ${res.path}`);
   else if (res.error) ui.setWarning(`PDF export failed: ${res.error}`);
+}
+
+// ---- profiles + sessions (persisted in SQLite by the main process) ----------
+// A session is one interview round. Its questions, answers, attachments and
+// transcript are saved as they happen, and reopening it later restores the AI
+// conversation so the next round continues where the last one stopped.
+let session = null; // { id, title, startedAt } of the open session, or null until the first question
+let sessions = [];
+
+async function refreshProfiles() {
+  const { profiles, activeId } = await api.listProfiles();
+  ui.setProfiles(profiles, activeId);
+}
+async function refreshSessions() {
+  sessions = await api.listSessions();
+  ui.setSessions(sessions, session?.id);
+}
+
+// Forget the on-screen conversation (not the saved one).
+function resetConversation() {
+  qa = [];
+  transcriptLog.length = 0;
+  viewIndex = -1;
+  awaitingNewQuestion = false;
+  audio.setTurns([]);
+  ui.clearTranscript();
+  ui.clearAnswer();
+  ui.setNav({ index: -1, total: 0 });
+}
+
+async function ensureSession() {
+  if (!session) {
+    session = await api.createSession();
+    await refreshSessions();
+  }
+  return session;
+}
+
+async function newSession() {
+  session = await api.createSession();
+  resetConversation();
+  await refreshSessions();
+  ui.notice(`New session: ${session.title}`);
+}
+
+// "New session" picked in the dropdown: nothing is created until a question is asked.
+function closeSession() {
+  if (session) api.endSession(session.id);
+  session = null;
+  resetConversation();
+  ui.setSessions(sessions, null);
+}
+
+async function openSession(id) {
+  const data = await api.loadSession(id);
+  if (!data) { ui.notice('That session no longer exists.'); await refreshSessions(); return; }
+  if (session && session.id !== id) api.endSession(session.id);
+  session = data.session;
+  qa = data.turns.map((t) => ({ question: t.question, prompt: t.prompt, attachments: t.attachments, answer: t.answer,
+    error: t.error, streaming: false, at: t.at }));
+  transcriptLog.splice(0, transcriptLog.length, ...data.transcript);
+  awaitingNewQuestion = false;
+  audio.setTurns(data.turns);
+  ui.clearTranscript();
+  if (qa.length) showQA(qa.length - 1);
+  else { ui.clearAnswer(); ui.setNav({ index: -1, total: 0 }); }
+  ui.setSessions(sessions, session.id);
+  ui.notice(`Continuing "${session.title}" — ${qa.length} question${qa.length === 1 ? '' : 's'} so far`);
+}
+
+async function persistTurn(entry) {
+  const s = await ensureSession();
+  await api.addTurn(s.id, { question: entry.question, prompt: entry.prompt, answer: entry.answer, error: entry.error,
+    at: entry.at, attachments: entry.attachments });
+  refreshSessions();
 }
 let awaitingNewQuestion = false;
 const latest = () => qa[qa.length - 1];
@@ -93,10 +173,11 @@ function showQA(index) {
   ui.setNav({ index: viewIndex, total: qa.length });
 }
 
-function sendPending() {
+async function sendPending() {
   const text = ui.getPending().trim();
   const attachments = ui.getAttachments();
   if (!text && !attachments.length) return;
+  await ensureSession();
   // A screenshot alone is a complete question ("solve what is on screen").
   audio.ask(text || DEFAULT_ATTACHMENT_QUESTION, attachments);
   ui.clearPending();
@@ -110,7 +191,11 @@ const audio = new AudioSession({
   emit: (e) => {
     switch (e.type) {
       case 'transcript':
-        if (e.isFinal) transcriptLog.push({ channel: e.channel, text: e.text, at: Date.now() });
+        if (e.isFinal) {
+          const entry = { channel: e.channel, text: e.text, at: Date.now() };
+          transcriptLog.push(entry);
+          if (session) api.addTranscript(session.id, entry);
+        }
         if (e.channel !== 'interviewer') break;
         if (awaitingNewQuestion) { ui.clearTranscript(); awaitingNewQuestion = false; }
         ui.addTranscript(e);
@@ -119,7 +204,7 @@ const audio = new AudioSession({
       case 'answer-start':
         ui.clearPending();
         for (const entry of qa) entry.streaming = false;
-        qa.push({ question: e.question, attachments: e.attachments || [], answer: '', streaming: true, error: null, at: Date.now() });
+        qa.push({ question: e.question, prompt: e.prompt, attachments: e.attachments || [], answer: '', streaming: true, error: null, at: Date.now() });
         viewIndex = qa.length - 1;
         ui.startAnswer(e.question, e.attachments);
         ui.setNav({ index: viewIndex, total: qa.length });
@@ -134,6 +219,7 @@ const audio = new AudioSession({
         const entry = latest(); if (!entry) break;
         entry.streaming = false; entry.error = e.error || null;
         if (viewingLatest()) ui.finishAnswer(e.error);
+        persistTurn(entry);
         break;
       }
       case 'audio-state':
@@ -141,7 +227,7 @@ const audio = new AudioSession({
         break;
       case 'running':
         ui.setRunning(e.running);
-        if (!e.running) ui.setAudioState('off');
+        if (!e.running) { ui.setAudioState('off'); if (session) api.endSession(session.id); }
         break;
       case 'error':
         ui.setWarning(e.message);
@@ -163,7 +249,16 @@ function pushAiConfig(s) {
 }
 
 function applySettings(s) {
+  const profileChanged = s.activeProfileId !== settings.activeProfileId;
   settings = s;
+  refreshProfiles();
+  if (profileChanged) {
+    // Another company / role: its sessions are separate, so start clean.
+    if (session) api.endSession(session.id);
+    session = null;
+    resetConversation();
+    refreshSessions();
+  }
   applyTheme(s.theme);
   applyFont(s);
   ui.setTheme(s.theme);
@@ -178,6 +273,7 @@ function applySettings(s) {
 }
 
 applySettings(settings);
+refreshSessions();
 api.onSettingsChanged((s) => applySettings(s));
 
 // ---- global shortcuts (fired from the main process) -----------------------

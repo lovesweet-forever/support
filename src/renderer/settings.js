@@ -55,9 +55,42 @@ $('themes').addEventListener('click', (e) => {
 });
 renderThemeCards();
 
-// The panel can change the theme too; follow it.
+// ---- profiles ---------------------------------------------------------------
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+async function renderProfiles() {
+  const { profiles, activeId } = await api.listProfiles();
+  $('profile').innerHTML = profiles.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
+  $('profile').value = String(activeId ?? '');
+}
+// The active profile's fields, into the form.
+function fillProfileFields(s) {
+  $('name').value = s.name || '';
+  $('resume').value = s.resume || '';
+  $('jobDescription').value = s.jobDescription || '';
+  $('customPrompt').value = s.customPrompt || '';
+  $('answerStyle').value = s.answerStyle;
+  $('language').value = s.language;
+}
+$('profile').addEventListener('change', () => api.selectProfile(Number($('profile').value)));
+$('profileNew').addEventListener('click', () => api.createProfile({ name: 'New profile' }));
+$('profileCopy').addEventListener('click', () => api.duplicateProfile(Number($('profile').value)));
+$('profileDelete').addEventListener('click', async () => {
+  const sel = $('profile');
+  const label = sel.options[sel.selectedIndex]?.text || 'this profile';
+  if (!window.confirm(`Delete "${label}" and every interview session saved under it?`)) return;
+  const res = await api.deleteProfile(Number(sel.value));
+  if (res?.error) window.alert(res.error);
+});
+renderProfiles();
+
+// The panel can change the theme or switch profile too; follow it.
 api.onSettingsChanged((s) => {
-  if (s.theme !== settings.theme) { settings.theme = s.theme; applyTheme(s.theme); renderThemeCards(); }
+  const switched = s.activeProfileId !== settings.activeProfileId;
+  settings = s;
+  applyTheme(s.theme); renderThemeCards();
+  applyFont(s); renderFontCards();
+  if (switched) fillProfileFields(s);
+  renderProfiles();
 });
 
 $('language').innerHTML = LANGUAGES.map((l) => `<option value="${l.code}">${l.label}</option>`).join('');
@@ -96,6 +129,7 @@ function save(patch) {
 const bindText = (id, key) => $(id).addEventListener('input', () => save({ [key]: $(id).value }));
 const bindCheck = (id, key) => $(id).addEventListener('change', () => save({ [key]: $(id).checked }));
 
+bindText('name', 'name');
 bindText('resume', 'resume');
 bindText('jobDescription', 'jobDescription');
 bindText('customPrompt', 'customPrompt');
@@ -170,11 +204,7 @@ navigator.mediaDevices?.addEventListener('devicechange', fillDevices);
 fillDevices();
 
 // initial fill
-$('resume').value = settings.resume || '';
-$('jobDescription').value = settings.jobDescription || '';
-$('customPrompt').value = settings.customPrompt || '';
-$('answerStyle').value = settings.answerStyle;
-$('language').value = settings.language;
+fillProfileFields(settings);
 $('provider').value = settings.provider;
 $('transcribeCandidate').checked = settings.transcribeCandidate;
 $('autoAnswer').checked = settings.autoAnswer;

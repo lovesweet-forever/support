@@ -64,7 +64,14 @@ export function buildPanel(root, handlers) {
         <button class="icon" data-quit title="Quit">&times;</button>
       </div>
       <div class="warning" data-warning></div>
-      <div class="section-label">Interviewer</div>
+      <div class="section-label">
+        <span>Interviewer</span>
+        <span class="section-actions">
+          <select data-profile title="Profile (company / role) — resume, job description and prompt come from it"></select>
+          <select data-session title="Session — pick an earlier one to continue that conversation"></select>
+          <button class="mini" data-new-session title="Start a fresh session for this profile">New</button>
+        </span>
+      </div>
       <div class="transcript" data-transcript><div class="empty">Waiting for the interviewer…</div></div>
       <div class="section-label">
         <span>Question to send</span>
@@ -105,7 +112,7 @@ export function buildPanel(root, handlers) {
   const el = {
     audio: $('[data-audio]'), title: $('[data-title]'), start: $('[data-start]'),
     provider: $('[data-provider]'), model: $('[data-model]'), style: $('[data-style]'), lang: $('[data-lang]'),
-    theme: $('[data-theme]'),
+    theme: $('[data-theme]'), profile: $('[data-profile]'), session: $('[data-session]'),
     warning: $('[data-warning]'), transcript: $('[data-transcript]'), pending: $('[data-pending]'),
     attachments: $('[data-attachments]'), file: $('[data-file]'), snap: $('[data-snap]'),
     counter: $('[data-counter]'), content: $('[data-content]'), answer: $('[data-answer]'),
@@ -128,6 +135,10 @@ export function buildPanel(root, handlers) {
   el.lang.onchange = () => handlers.onLanguage(el.lang.value);
   el.style.onchange = () => handlers.onStyle(el.style.value);
   el.theme.onchange = () => handlers.onTheme(el.theme.value);
+  el.profile.onchange = () => handlers.onProfile(Number(el.profile.value));
+  el.session.onchange = () => handlers.onSession(el.session.value ? Number(el.session.value) : null);
+  $('[data-new-session]').onclick = () => handlers.onNewSession();
+  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   el.provider.onchange = () => { populateModels(el.provider.value); handlers.onProvider(el.provider.value, el.model.value); };
   el.model.onchange = () => handlers.onModel(el.model.value);
 
@@ -251,6 +262,16 @@ export function buildPanel(root, handlers) {
     setLanguage(code) { el.lang.value = code; },
     setStyle(id) { el.style.value = id; },
     setTheme(id) { el.theme.value = THEMES.some((t) => t.id === id) ? id : THEMES[0].id; },
+    setProfiles(list, activeId) {
+      el.profile.innerHTML = list.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
+      el.profile.value = String(activeId ?? '');
+    },
+    setSessions(list, currentId) {
+      const label = (s) => `${s.title} · ${s.turnCount} Q`;
+      el.session.innerHTML = ['<option value="">New session</option>',
+        ...list.map((s) => `<option value="${s.id}">${esc(label(s))}</option>`)].join('');
+      el.session.value = currentId ? String(currentId) : '';
+    },
     setFont(px) { fontPx = Math.min(28, Math.max(11, Math.round(px))); root.querySelector('.panel').style.setProperty('--answer-font', `${fontPx}px`); },
     setAiConfig({ provider, model, answerStyle, availability: avail }) {
       if (avail) availability = avail;
@@ -283,6 +304,10 @@ export function buildPanel(root, handlers) {
       scroll(el.transcript);
     },
     clearTranscript() { el.transcript.innerHTML = '<div class="empty">Waiting for the next question…</div>'; interim = { interviewer: null, candidate: null }; },
+    clearAnswer() {
+      el.answer.innerHTML = '<div class="empty">Answers appear here when you send a question.</div>';
+      answerEl = null; syncCode('');
+    },
 
     getPending() { return el.pending.value; },
     appendPending(text) {

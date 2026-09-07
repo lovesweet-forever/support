@@ -90,6 +90,21 @@ Click the **⚙** in the panel (or the tray icon → Setup) and fill in:
 - **Font** — pick one of the built-in stacks (system, Helvetica/Arial, Verdana, Georgia, monospace…)
   or type the name of any font installed on the machine. Applies to the panel and the Setup window.
 
+### Profiles and sessions
+
+- A **profile** is one company / role: its resume, job description, custom prompt, answer style and
+  language. Create one per application in Setup (New / Duplicate / Delete) and switch with the
+  **profile picker** in the panel's Interviewer bar or in Setup. API keys, theme, font and capture
+  devices are global, not per profile.
+- A **session** is one interview round. It starts with the first question after **Start** (or
+  **New** in the Interviewer bar), and every question, answer, attachment and the spoken transcript
+  is saved as it happens. For the next round — e.g. the technical interview after the intro call —
+  pick the earlier session in the **session picker**: its Q&A comes back on screen and the AI
+  continues the same conversation, so it already knows what was discussed. "New session" in the
+  picker starts fresh with the next question. **PDF** exports the session that is open.
+- Everything is stored locally in SQLite (`copilot.sqlite` in the app data folder, screenshots as
+  files next to it). Deleting a profile deletes its sessions.
+
 Keys can instead go in **`config/keys.json`** next to the app (a `keys.example.json` is included).
 Keys in that file override the UI fields and lock them — the same behaviour as the extension.
 

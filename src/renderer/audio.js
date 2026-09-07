@@ -107,7 +107,7 @@ export class AudioSession {
       emit: (event) => {
         if (event.type === 'start') {
           this.questionMark = this.history.length;
-          emit({ type: 'answer-start', question: event.question, attachments: event.attachments || [] });
+          emit({ type: 'answer-start', question: event.question, attachments: event.attachments || [], prompt: event.prompt });
         } else if (event.type === 'delta') emit({ type: 'answer-delta', text: event.text });
         else if (event.type === 'done') emit({ type: 'answer-done' });
         else if (event.type === 'error') emit({ type: 'answer-done', error: event.error });
@@ -199,7 +199,9 @@ export class AudioSession {
     this.running = true;
     this.history = [];
     this.questionMark = 0;
-    this.engine.reset();
+    // The AI conversation is per session, not per Start: stopping and starting
+    // again (or reopening a saved session) keeps the context. See setTurns().
+    this.engine.cancel();
     this.detector.reset();
     this.detector.setLanguage(settings.language);
     this.detector.setEnabled(settings.autoAnswer);
@@ -254,6 +256,9 @@ export class AudioSession {
   }
 
   setAutoAnswer(on) { this.detector.setEnabled(on); }
+
+  /** Replace the AI conversation with a saved session's turns (empty = fresh). */
+  setTurns(turns) { this.engine.setTurns(turns); }
 
   /** Manual send of an exact question (from the box), with optional attachments. */
   ask(text, attachments = []) {
