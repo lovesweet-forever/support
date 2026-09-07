@@ -19,7 +19,7 @@
 // WDA_EXCLUDEFROMCAPTURE, macOS: NSWindowSharingNone) while staying visible
 // on the local display.
 
-const { app, BrowserWindow, ipcMain, globalShortcut, desktopCapturer, session, Tray, Menu, shell, systemPreferences } = require('electron');
+const { app, BrowserWindow, ipcMain, globalShortcut, desktopCapturer, session, Tray, Menu, shell, systemPreferences, screen } = require('electron');
 const { execFile } = require('child_process');
 const path = require('path');
 const settings = require('./settings');
@@ -276,6 +276,39 @@ ipcMain.handle('panel:set-ignore-mouse', (_e, ignore) => {
   if (panel && !panel.isDestroyed()) panel.setIgnoreMouseEvents(Boolean(ignore), { forward: true });
 });
 ipcMain.handle('panel:hide', () => { if (panel && !panel.isDestroyed()) panel.hide(); });
+
+// Screenshot of the display the panel sits on, to attach to a question. The
+// panel and the setup window are content-protected, so on Windows / macOS
+// they do not appear in the shot; Linux has no such protection, so the panel
+// is hidden for the capture there.
+const SHOT_MAX_EDGE = 2000;
+ipcMain.handle('screen:capture', async () => {
+  if (isMac && systemPreferences.getMediaAccessStatus('screen') !== 'granted') {
+    throw new Error('allow Screen Recording for Interview Copilot in System Settings → Privacy & Security, then try again');
+  }
+  const alive = panel && !panel.isDestroyed();
+  const display = alive ? screen.getDisplayMatching(panel.getBounds()) : screen.getPrimaryDisplay();
+  const scale = display.scaleFactor || 1;
+  const hidePanel = isLinux && alive && panel.isVisible();
+  if (hidePanel) { panel.hide(); await new Promise((r) => setTimeout(r, 250)); }
+  try {
+    const sources = await desktopCapturer.getSources({
+      types: ['screen'],
+      thumbnailSize: { width: Math.round(display.size.width * scale), height: Math.round(display.size.height * scale) }
+    });
+    const source = sources.find((s) => String(s.display_id) === String(display.id)) || sources[0];
+    if (!source || source.thumbnail.isEmpty()) throw new Error('no screen image was returned');
+    let image = source.thumbnail;
+    const { width, height } = image.getSize();
+    if (Math.max(width, height) > SHOT_MAX_EDGE) {
+      image = image.resize(width >= height ? { width: SHOT_MAX_EDGE } : { height: SHOT_MAX_EDGE });
+    }
+    const size = image.getSize();
+    return { mime: 'image/png', data: image.toPNG().toString('base64'), width: size.width, height: size.height };
+  } finally {
+    if (hidePanel) panel.show();
+  }
+});
 ipcMain.handle('quit', () => app.quit());
 
 // macOS asks for microphone access once per app; both the real mic and a

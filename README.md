@@ -106,6 +106,14 @@ Keys in that file override the UI fields and lock them — the same behaviour as
      it. Nothing to click.
 3. The interviewer's words collect in the **Question to send** box. Edit if needed, then **Enter**
    or **Send**. The answer streams in; code goes to the docked code panel.
+4. For technical rounds, **attach what is on screen**: **Snap** grabs a screenshot of the display
+   the panel is on (the panel itself is never in the shot), **Attach** picks files, and you can
+   also **paste** a screenshot (`Win+Shift+S` / `⌘⇧4`, then `Ctrl+V` in the box) or **drop** files
+   onto the panel. Images, PDFs and text/code files are supported, up to 8 per question. Sending
+   with only an attachment asks the model to solve whatever the attachment shows. Attachments are
+   sent to the AI provider with the question and are kept for the two most recent questions so
+   follow-ups like "explain line 3" still see the screenshot. On macOS, Snap needs *Screen
+   Recording* permission for Interview Copilot (System Settings → Privacy & Security).
 
 | Windows / Linux (global) | macOS (global) | Action |
 |---|---|---|

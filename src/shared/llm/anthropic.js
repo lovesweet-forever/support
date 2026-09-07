@@ -12,6 +12,20 @@ const ENDPOINT = 'https://api.anthropic.com/v1/messages';
 const API_VERSION = '2023-06-01';
 const FALLBACK_BETA = 'server-side-fallback-2026-07-01';
 
+// A user turn with screenshots / PDFs becomes a content array: the binary
+// parts first, then the text. Everything else stays a plain string.
+function toContent(m) {
+  if (!m.attachments?.length) return m.content;
+  return [
+    ...m.attachments.map((a) =>
+      a.kind === 'pdf'
+        ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: a.data }, title: a.name }
+        : { type: 'image', source: { type: 'base64', media_type: a.mime, data: a.data } }
+    ),
+    { type: 'text', text: m.content }
+  ];
+}
+
 function buildBody({ settings, grounding, constraints, messages, withFallbacks }) {
   const body = {
     model: settings.model,
@@ -26,7 +40,7 @@ function buildBody({ settings, grounding, constraints, messages, withFallbacks }
       { type: 'text', text: constraints }
     ],
     // The whole session so far (user/assistant pairs) plus the new question.
-    messages,
+    messages: messages.map((m) => ({ role: m.role, content: toContent(m) })),
     stream: true
   };
   if (withFallbacks) body.fallbacks = 'default';

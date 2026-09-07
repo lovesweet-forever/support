@@ -107,7 +107,7 @@ export class AudioSession {
       emit: (event) => {
         if (event.type === 'start') {
           this.questionMark = this.history.length;
-          emit({ type: 'answer-start', question: event.question });
+          emit({ type: 'answer-start', question: event.question, attachments: event.attachments || [] });
         } else if (event.type === 'delta') emit({ type: 'answer-delta', text: event.text });
         else if (event.type === 'done') emit({ type: 'answer-done' });
         else if (event.type === 'error') emit({ type: 'answer-done', error: event.error });
@@ -255,11 +255,11 @@ export class AudioSession {
 
   setAutoAnswer(on) { this.detector.setEnabled(on); }
 
-  /** Manual send of an exact question (from the box). */
-  ask(text) {
+  /** Manual send of an exact question (from the box), with optional attachments. */
+  ask(text, attachments = []) {
     const q = (text || '').trim();
     if (!q) return;
     this.detector.reset();
-    this.engine.answer(q);
+    this.engine.answer(q, attachments);
   }
 }

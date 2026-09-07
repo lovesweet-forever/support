@@ -6,6 +6,7 @@
 // after the cache breakpoint means switching language costs nothing.
 
 import { ANSWER_STYLES, languageByCode } from './constants.js';
+import { splitForRequest, describe } from './attachments.js';
 
 const MAX_HISTORY_TURNS = 6;
 
@@ -72,6 +73,11 @@ export function buildConstraints(settings) {
       'candidate can honestly offer instead — never invent employers, titles, dates or metrics.',
     'The transcript may contain speech-recognition errors. Infer the intended question and answer ' +
       'it; do not comment on the transcription.',
+    'A question may come with attachments — a screenshot of the shared screen, an image, a PDF or a ' +
+      'text/code file. They are part of the question: read whatever they show (a coding problem, a ' +
+      'task description, code, an error, a diagram, a table) and answer that. For a coding problem, ' +
+      'give the full working solution; for a bug, the fix; for a diagram or document, the explanation ' +
+      'the interviewer is after. Do not describe the attachment itself unless asked.',
     'Output only the answer. No preamble, no "Great question", no meta-commentary.'
   ].join('\n');
 }
@@ -82,10 +88,14 @@ export function buildConstraints(settings) {
  * conversation cannot know: what the candidate actually said out loud since
  * the last question — useful for "can you expand on what you just said?".
  *
+ * Text attachments are inlined here; images and PDFs are sent as content parts
+ * next to this text by each provider module.
+ *
  * @param {{channel: string, text: string}[]} history utterances since the last question
  * @param {string} question the question being sent
+ * @param {object[]} [attachments] see shared/attachments.js
  */
-export function buildUserMessage(history, question) {
+export function buildUserMessage(history, question, attachments = []) {
   const spoken = history.filter((t) => t.channel === 'candidate').slice(-MAX_HISTORY_TURNS);
   const lines = [];
 
@@ -93,6 +103,16 @@ export function buildUserMessage(history, question) {
     lines.push('<what_i_said_since_the_last_question>');
     for (const turn of spoken) lines.push(turn.text);
     lines.push('</what_i_said_since_the_last_question>', '');
+  }
+
+  if (attachments.length) {
+    const { inline } = splitForRequest(attachments);
+    lines.push(
+      `Attached to this question (${attachments.length}): ${describe(attachments)}. ` +
+        'Treat them as part of the question.',
+      ''
+    );
+    for (const a of inline) lines.push(`<attachment name="${a.name.replace(/"/g, '')}">`, a.text, '</attachment>', '');
   }
 
   lines.push('The interviewer just asked:', '', question, '', 'Answer it now.');

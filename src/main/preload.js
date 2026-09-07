@@ -17,6 +17,8 @@ contextBridge.exposeInMainWorld('copilot', {
   setIgnoreMouse: (ignore) => ipcRenderer.invoke('panel:set-ignore-mouse', ignore),
   hidePanel: () => ipcRenderer.invoke('panel:hide'),
   quit: () => ipcRenderer.invoke('quit'),
+  /** Screenshot of the display the panel is on, as { mime, data (base64), width, height }. */
+  captureScreen: () => ipcRenderer.invoke('screen:capture'),
   /** macOS: trigger the OS microphone prompt (no-op elsewhere). */
   ensureMicPermission: () => ipcRenderer.invoke('media:ensure-mic'),
   /** Linux: create the temporary source mirroring the default output; resolves to its label. */

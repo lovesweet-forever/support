@@ -6,6 +6,7 @@ import { buildPanel } from './ui.js';
 import { AudioSession } from './audio.js';
 import { providerAvailability, firstAvailableProvider } from '../shared/settings-util.js';
 import { PROVIDERS, applyTheme, applyFont } from '../shared/constants.js';
+import { DEFAULT_ATTACHMENT_QUESTION } from '../shared/attachments.js';
 
 const api = window.copilot;
 let settings = await api.getSettings();
@@ -78,9 +79,12 @@ function showQA(index) {
 
 function sendPending() {
   const text = ui.getPending().trim();
-  if (!text) return;
-  audio.ask(text);
+  const attachments = ui.getAttachments();
+  if (!text && !attachments.length) return;
+  // A screenshot alone is a complete question ("solve what is on screen").
+  audio.ask(text || DEFAULT_ATTACHMENT_QUESTION, attachments);
   ui.clearPending();
+  ui.clearAttachments();
   awaitingNewQuestion = true;
 }
 
@@ -98,9 +102,9 @@ const audio = new AudioSession({
       case 'answer-start':
         ui.clearPending();
         for (const entry of qa) entry.streaming = false;
-        qa.push({ question: e.question, answer: '', streaming: true, error: null });
+        qa.push({ question: e.question, attachments: e.attachments || [], answer: '', streaming: true, error: null });
         viewIndex = qa.length - 1;
-        ui.startAnswer(e.question);
+        ui.startAnswer(e.question, e.attachments);
         ui.setNav({ index: viewIndex, total: qa.length });
         break;
       case 'answer-delta': {

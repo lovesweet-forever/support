@@ -9,6 +9,7 @@
 import { buildGrounding, buildConstraints, buildUserMessage } from '../prompt.js';
 import { providerKey, firstAvailableProvider } from '../settings-util.js';
 import { PROVIDERS } from '../constants.js';
+import { splitForRequest, trimAttachments } from '../attachments.js';
 import * as anthropic from './anthropic.js';
 import * as openai from './openai.js';
 import * as gemini from './gemini.js';
@@ -18,14 +19,21 @@ const IMPLEMENTATIONS = { anthropic, openai, gemini };
 // Bounds on the remembered conversation. The oldest pairs fall off first.
 export const MAX_TURN_MESSAGES = 20; // 10 question/answer pairs
 export const MAX_TURN_CHARS = 40000; // roughly 10k tokens
+// Screenshots / PDFs are only resent with the most recent user turns.
+export const ATTACHMENT_TURNS = 2;
 
-/** Append one Q&A pair and enforce the bounds. Pure — returns a new array. */
+/**
+ * Append one Q&A pair and enforce the bounds. Pure — returns a new array.
+ * `question` is the user message text or `{ content, attachments }`.
+ */
 export function appendTurns(turns, question, answer, limits = {}) {
   const maxMessages = limits.maxMessages ?? MAX_TURN_MESSAGES;
   const maxChars = limits.maxChars ?? MAX_TURN_CHARS;
   const chars = (arr) => arr.reduce((n, m) => n + m.content.length, 0);
+  const user = typeof question === 'string' ? { role: 'user', content: question } : { role: 'user', ...question };
+  if (!user.attachments?.length) delete user.attachments;
 
-  let next = [...turns, { role: 'user', content: question }, { role: 'assistant', content: answer }];
+  let next = [...turns, user, { role: 'assistant', content: answer }];
   // Always keep at least the pair just added; drop whole pairs from the front.
   while (next.length > 2 && (next.length > maxMessages || chars(next) > maxChars)) next = next.slice(2);
   return next;
@@ -61,7 +69,11 @@ export class AnswerEngine {
     }
   }
 
-  async answer(question) {
+  /**
+   * @param {string} question
+   * @param {object[]} [attachments] screenshots / files sent with it (shared/attachments.js)
+   */
+  async answer(question, attachments = []) {
     let settings = this.getSettings();
 
     // Safety net: if the selected provider has no key but another one does,
@@ -95,12 +107,16 @@ export class AnswerEngine {
     // Build the request *before* announcing the start: the offscreen document
     // advances its "since the last question" mark on 'start', and we want the
     // candidate's words from before this question, not after it.
-    const messages = [
-      ...this.turns,
-      { role: 'user', content: buildUserMessage(this.getHistory(), question) }
-    ];
+    // Text attachments are inlined in the message; images and PDFs ride along
+    // as `attachments` for the provider module to turn into content parts.
+    const userTurn = {
+      role: 'user',
+      content: buildUserMessage(this.getHistory(), question, attachments),
+      attachments: splitForRequest(attachments).parts
+    };
+    const messages = trimAttachments([...this.turns, userTurn], ATTACHMENT_TURNS);
 
-    this.emit({ type: 'start', question });
+    this.emit({ type: 'start', question, attachments });
 
     let full = '';
     try {
@@ -120,7 +136,7 @@ export class AnswerEngine {
       if (!controller.signal.aborted) {
         // Only a completed answer joins the session memory; an aborted one
         // would leave the model believing it said something it never finished.
-        this.turns = appendTurns(this.turns, question, full);
+        this.turns = appendTurns(this.turns, { content: userTurn.content, attachments: userTurn.attachments }, full);
         this.emit({ type: 'done' });
       }
     } catch (err) {

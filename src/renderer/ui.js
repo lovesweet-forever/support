@@ -4,6 +4,37 @@
 
 import { LANGUAGES, PROVIDERS, ANSWER_STYLES, THEMES } from '../shared/constants.js';
 import { renderRich, renderCodeOnly, codeResize } from '../shared/render.js';
+import { LIMITS } from '../shared/attachments.js';
+import { fileToAttachment, namePasted, captureScreen } from './attach.js';
+
+// One attachment as a small chip: thumbnail (images) or a type badge, the
+// name, and optionally a remove button. DOM nodes only — names are user data.
+function chip(a, onRemove) {
+  const c = document.createElement('span');
+  c.className = `chip ${a.kind}`;
+  if (a.preview) {
+    const img = document.createElement('img'); img.src = a.preview; img.alt = ''; c.append(img);
+  } else {
+    const badge = document.createElement('span'); badge.className = 'chip-icon'; badge.textContent = a.kind === 'pdf' ? 'PDF' : 'TXT'; c.append(badge);
+  }
+  const name = document.createElement('span'); name.className = 'chip-name'; name.textContent = a.name; name.title = a.name; c.append(name);
+  if (onRemove) {
+    const x = document.createElement('button'); x.className = 'chip-x'; x.textContent = '×'; x.title = 'Remove'; x.onclick = onRemove; c.append(x);
+  }
+  return c;
+}
+
+// The question block above an answer, with the attachments it was sent with.
+function questionNode(question, attachments) {
+  const q = document.createElement('div'); q.className = 'question';
+  if (question) q.append(document.createTextNode(question));
+  if (attachments?.length) {
+    const list = document.createElement('div'); list.className = 'attachments';
+    for (const a of attachments) list.append(chip(a));
+    q.append(list);
+  }
+  return q;
+}
 
 const shortLabel = (l) => l.replace(/\s*\([^)]*\)\s*$/, '');
 const PROVIDER_SHORT = { anthropic: 'Claude', openai: 'OpenAI', gemini: 'Gemini' };
@@ -38,12 +69,16 @@ export function buildPanel(root, handlers) {
       <div class="section-label">
         <span>Question to send</span>
         <span class="section-actions">
+          <button class="mini" data-snap title="Screenshot the screen and attach it (the panel is not in the shot)">Snap</button>
+          <button class="mini" data-attach title="Attach images, PDFs or text/code files (or paste / drop them)">Attach</button>
+          <input type="file" data-file multiple hidden accept="image/*,.pdf,text/*,.txt,.md,.json,.csv,.xml,.yaml,.yml,.sql,.js,.ts,.tsx,.jsx,.py,.java,.cs,.go,.rs,.rb,.php,.kt,.swift,.c,.h,.cpp,.sh,.html,.css" />
           <button class="mini" data-clear>Clear</button>
           <button class="mini send" data-send>Send</button>
         </span>
       </div>
       <textarea class="pending" data-pending rows="2"
-        placeholder="The interviewer's words collect here. Edit or type your own — then Enter or Send."></textarea>
+        placeholder="The interviewer's words collect here. Edit or type your own — then Enter or Send. Paste or drop a screenshot to attach it."></textarea>
+      <div class="attachments" data-attachments></div>
       <div class="section-label">
         <span>Answer <span class="qa-counter" data-counter></span></span>
         <span class="section-actions">
@@ -69,6 +104,7 @@ export function buildPanel(root, handlers) {
     provider: $('[data-provider]'), model: $('[data-model]'), style: $('[data-style]'), lang: $('[data-lang]'),
     theme: $('[data-theme]'),
     warning: $('[data-warning]'), transcript: $('[data-transcript]'), pending: $('[data-pending]'),
+    attachments: $('[data-attachments]'), file: $('[data-file]'), snap: $('[data-snap]'),
     counter: $('[data-counter]'), content: $('[data-content]'), answer: $('[data-answer]'),
     seam: $('[data-seam]'), codeCol: $('[data-code-col]'), codeBody: $('[data-code-body]'),
     prev: $('[data-prev]'), next: $('[data-next]')
@@ -95,11 +131,58 @@ export function buildPanel(root, handlers) {
   // ---- send
   const send = () => handlers.onSend();
   $('[data-send]').onclick = send;
-  $('[data-clear]').onclick = () => (el.pending.value = '');
+  $('[data-clear]').onclick = () => { el.pending.value = ''; clearAttachments(); };
   el.pending.addEventListener('keydown', (e) => {
     e.stopPropagation();
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
   });
+
+  // ---- attachments (screenshots / files sent with the question)
+  let attachments = [];
+  let noticeTimer = null;
+  const notice = (msg) => {
+    el.warning.textContent = msg;
+    clearTimeout(noticeTimer);
+    noticeTimer = setTimeout(() => { if (el.warning.textContent === msg) el.warning.textContent = ''; }, 6000);
+  };
+  function renderAttachments() {
+    el.attachments.textContent = '';
+    attachments.forEach((a, i) => el.attachments.append(chip(a, () => { attachments.splice(i, 1); renderAttachments(); })));
+  }
+  function addAttachment(a) {
+    if (attachments.length >= LIMITS.maxCount) { notice(`At most ${LIMITS.maxCount} attachments per question.`); return false; }
+    attachments.push(a); renderAttachments(); return true;
+  }
+  async function addFiles(files) {
+    const failed = [];
+    for (const file of Array.from(files || [])) {
+      try { if (!addAttachment(await fileToAttachment(file))) break; }
+      catch (err) { failed.push(err.message); }
+    }
+    if (failed.length) notice(failed.join(' · '));
+  }
+  function clearAttachments() { attachments = []; renderAttachments(); }
+
+  $('[data-attach]').onclick = () => el.file.click();
+  el.file.onchange = () => { addFiles(el.file.files); el.file.value = ''; };
+  el.snap.onclick = async () => {
+    el.snap.disabled = true;
+    try { addAttachment(await captureScreen()); }
+    catch (err) { notice(`Screenshot failed: ${err.message}`); }
+    finally { el.snap.disabled = false; }
+  };
+  // Paste a screenshot (Win+Shift+S / Cmd+Shift+4 then Ctrl+V) into the question box.
+  el.pending.addEventListener('paste', (e) => {
+    const files = Array.from(e.clipboardData?.files || []);
+    if (!files.length) return;
+    e.preventDefault();
+    addFiles(files.map((f, i) => namePasted(f, i)));
+  });
+  // Drop files anywhere on the panel.
+  const panelEl = root.querySelector('.panel');
+  root.addEventListener('dragover', (e) => { e.preventDefault(); panelEl.classList.add('dropping'); });
+  root.addEventListener('dragleave', (e) => { if (!root.contains(e.relatedTarget)) panelEl.classList.remove('dropping'); });
+  root.addEventListener('drop', (e) => { e.preventDefault(); panelEl.classList.remove('dropping'); addFiles(e.dataTransfer?.files); });
 
   // ---- font + nav + copy
   $('[data-font-dec]').onclick = () => handlers.onFont(fontPx - 1);
@@ -199,10 +282,12 @@ export function buildPanel(root, handlers) {
       el.pending.scrollTop = el.pending.scrollHeight;
     },
     clearPending() { el.pending.value = ''; },
+    getAttachments() { return attachments.slice(); },
+    clearAttachments,
 
-    startAnswer(question) {
+    startAnswer(question, atts) {
       el.answer.innerHTML = '';
-      if (question) { const q = document.createElement('div'); q.className = 'question'; q.textContent = question; el.answer.append(q); }
+      if (question || atts?.length) el.answer.append(questionNode(question, atts));
       answerEl = document.createElement('div'); answerEl.className = 'answer-text thinking'; el.answer.append(answerEl);
       syncCode(''); el.answer.scrollTop = 0;
     },
@@ -212,9 +297,9 @@ export function buildPanel(root, handlers) {
       if (error) { const e = document.createElement('div'); e.className = 'empty'; e.textContent = error; el.answer.append(e); }
       answerEl = null;
     },
-    renderQA({ question, answer, streaming, error }) {
+    renderQA({ question, attachments: atts, answer, streaming, error }) {
       el.answer.innerHTML = '';
-      if (question) { const q = document.createElement('div'); q.className = 'question'; q.textContent = question; el.answer.append(q); }
+      if (question || atts?.length) el.answer.append(questionNode(question, atts));
       const node = document.createElement('div'); node.className = `answer-text${streaming ? ' thinking' : ''}`;
       renderRich(node, answer || ''); el.answer.append(node);
       if (error) { const e = document.createElement('div'); e.className = 'empty'; e.textContent = error; el.answer.append(e); }
