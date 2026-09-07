@@ -155,13 +155,19 @@ function createPanel() {
 
 function createSettingsWindow() {
   if (settingsWin && !settingsWin.isDestroyed()) {
+    settingsWin.show();
     settingsWin.focus();
     return;
   }
+  // The panel floats at the screen-saver always-on-top level, so a plain
+  // window would open underneath it. Make Setup a child of the panel (children
+  // always stack above their parent) and pin it to the same level.
+  const owner = panel && !panel.isDestroyed() && panel.isVisible() ? panel : undefined;
   settingsWin = new BrowserWindow({
     width: 900,
     height: 760,
     title: 'Interview Copilot — Setup',
+    parent: owner,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -169,6 +175,8 @@ function createSettingsWindow() {
     }
   });
   if (!isLinux) settingsWin.setContentProtection(true);
+  settingsWin.setAlwaysOnTop(true, 'screen-saver');
+  settingsWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   // Help links (e.g. BlackHole on macOS) open in the system browser.
   settingsWin.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https:\/\//.test(url)) shell.openExternal(url);
