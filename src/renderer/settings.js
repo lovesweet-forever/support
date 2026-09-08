@@ -95,6 +95,7 @@ function fillProfileFields(s) {
   $('resume').value = s.resume || '';
   $('jobDescription').value = s.jobDescription || '';
   $('customPrompt').value = s.customPrompt || '';
+  $('priorNotes').value = s.priorNotes || '';
   $('answerStyle').value = s.answerStyle;
   $('language').value = s.language;
 }
@@ -198,6 +199,35 @@ bindText('name', 'name');
 bindText('resume', 'resume');
 bindText('jobDescription', 'jobDescription');
 bindText('customPrompt', 'customPrompt');
+bindText('priorNotes', 'priorNotes');
+
+// ---- earlier rounds: import a PDF (e.g. a saved report) or a text file ------
+const PRIOR_MAX = 60000;
+$('priorImport').addEventListener('click', () => $('priorFile').click());
+$('priorClear').addEventListener('click', () => { $('priorNotes').value = ''; save({ priorNotes: '' }); });
+$('priorFile').addEventListener('change', async () => {
+  const file = $('priorFile').files[0];
+  $('priorFile').value = '';
+  if (!file) return;
+  const hint = $('priorHint');
+  hint.textContent = `Reading ${file.name}…`;
+  try {
+    const { extractText } = await import('./extract.js');
+    let text = (await extractText(file)).trim();
+    if (!text) throw new Error('no text found in the file (a scanned PDF has none)');
+    const stamp = new Date().toLocaleDateString();
+    const current = $('priorNotes').value.trim();
+    let next = `${current ? `${current}\n\n` : ''}--- Imported from ${file.name} (${stamp}) ---\n${text}`;
+    let note = `Added ${text.length.toLocaleString()} characters from ${file.name}.`;
+    if (next.length > PRIOR_MAX) { next = `${next.slice(0, PRIOR_MAX)}\n…[trimmed]`; note += ` Trimmed to ${PRIOR_MAX.toLocaleString()} characters.`; }
+    $('priorNotes').value = next;
+    $('priorNotes').scrollTop = $('priorNotes').scrollHeight;
+    save({ priorNotes: next });
+    hint.textContent = note;
+  } catch (err) {
+    hint.textContent = `Could not import ${file.name}: ${err.message}`;
+  }
+});
 $('answerStyle').addEventListener('change', () => save({ answerStyle: $('answerStyle').value }));
 $('language').addEventListener('change', () => save({ language: $('language').value }));
 $('provider').addEventListener('change', () => { const provider = $('provider').value; save({ provider, model: PROVIDERS[provider].defaultModel }); renderProviderFields(); });

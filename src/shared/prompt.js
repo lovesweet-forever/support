@@ -38,6 +38,21 @@ export function buildGrounding(settings) {
     parts.push(`<job_description>\n${settings.jobDescription.trim()}\n</job_description>`);
   }
 
+  // Earlier rounds with the same company: the candidate's notes and/or the
+  // report of a previous session. Continuity matters — the interviewer may
+  // refer back to it, and the candidate should not contradict what they said.
+  const prior = String(settings.priorNotes || '').trim();
+  if (prior) {
+    parts.push(
+      'The candidate already had one or more earlier interview rounds with this company. Below are ' +
+        'their notes and/or the record of those rounds (questions, the answers given, what was ' +
+        'discussed). Use them for continuity: stay consistent with what the candidate already said, ' +
+        'build on it rather than repeating it word for word, pick up any follow-ups that were ' +
+        'promised, and refer back to earlier discussion when the interviewer does.\n' +
+        `<earlier_rounds>\n${prior}\n</earlier_rounds>`
+    );
+  }
+
   return parts.join('\n\n');
 }
 

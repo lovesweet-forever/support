@@ -294,9 +294,9 @@ function createTray() {
 function mergedSettings() {
   const s = settings.get();
   const p = s.activeProfileId ? db.getProfile(s.activeProfileId) : null;
-  if (!p) return { ...s, activeProfileId: null, name: '' };
+  if (!p) return { ...s, activeProfileId: null, name: '', priorNotes: '' };
   return { ...s, activeProfileId: p.id, name: p.name, resume: p.resume, jobDescription: p.jobDescription,
-    customPrompt: p.customPrompt, answerStyle: p.answerStyle, language: p.language };
+    customPrompt: p.customPrompt, priorNotes: p.priorNotes || '', answerStyle: p.answerStyle, language: p.language };
 }
 
 function broadcastSettings() {

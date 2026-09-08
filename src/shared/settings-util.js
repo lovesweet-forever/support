@@ -6,6 +6,8 @@ export const DEFAULT_SETTINGS = {
   jobDescription: '',
   customPrompt:
     'Answer in my voice — first person, confident but genuine and down to earth, the way I would actually speak. Only use experience that appears in my resume.',
+  // Notes / imported report of earlier rounds with this company (per profile)
+  priorNotes: '',
   answerStyle: 'detailed',
   language: 'en',
 

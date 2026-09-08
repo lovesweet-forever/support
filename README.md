@@ -107,6 +107,10 @@ interview: the profile picker, resume, job description, custom prompt, answer st
   the selected session. **PDF** exports the session that is open, named after the session.
 - Everything is stored locally in SQLite (`copilot.sqlite` in the app data folder, screenshots as
   files next to it). Deleting a profile deletes its sessions.
+- **Earlier rounds** (Profile tab): notes about previous interviews with the same company, or the
+  text of a file you import — the PDF report this app saved, or any PDF / text / Markdown file.
+  It goes to the AI together with the resume and job description, so the next round stays
+  consistent with what was already said even if the session itself is gone.
 
 Keys can instead go in **`config/keys.json`** next to the app (a `keys.example.json` is included).
 Keys in that file pre-fill any field you have left empty; a key typed in Setup overrides the file,

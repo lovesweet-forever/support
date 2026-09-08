@@ -21,8 +21,14 @@ const { app } = require('electron');
 const fs = require('fs');
 const path = require('path');
 
-const PROFILE_FIELDS = ['name', 'resume', 'jobDescription', 'customPrompt', 'answerStyle', 'language'];
-const COLUMN = { name: 'name', resume: 'resume', jobDescription: 'job_description', customPrompt: 'custom_prompt', answerStyle: 'answer_style', language: 'language' };
+const PROFILE_FIELDS = ['name', 'resume', 'jobDescription', 'customPrompt', 'priorNotes', 'answerStyle', 'language'];
+const COLUMN = { name: 'name', resume: 'resume', jobDescription: 'job_description', customPrompt: 'custom_prompt', priorNotes: 'prior_notes',
+  answerStyle: 'answer_style', language: 'language' };
+
+// Columns added after the first release; applied to databases created before them.
+const MIGRATIONS = [
+  { table: 'profiles', column: 'prior_notes', ddl: "ALTER TABLE profiles ADD COLUMN prior_notes TEXT DEFAULT ''" }
+];
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS profiles (
@@ -83,6 +89,10 @@ async function open(userData = app.getPath('userData')) {
   db = bytes ? new SQL.Database(bytes) : new SQL.Database();
   db.run('PRAGMA foreign_keys = ON');
   db.run(SCHEMA);
+  for (const m of MIGRATIONS) {
+    const cols = all(`PRAGMA table_info(${m.table})`).map((c) => c.name);
+    if (!cols.includes(m.column)) { db.run(m.ddl); touch(); }
+  }
   return module.exports;
 }
 
@@ -113,7 +123,7 @@ const lastId = () => one('SELECT last_insert_rowid() AS id').id;
 
 const rowToProfile = (r) =>
   r && { id: r.id, name: r.name, resume: r.resume, jobDescription: r.job_description, customPrompt: r.custom_prompt,
-    answerStyle: r.answer_style, language: r.language, createdAt: r.created_at, updatedAt: r.updated_at };
+    priorNotes: r.prior_notes || '', answerStyle: r.answer_style, language: r.language, createdAt: r.created_at, updatedAt: r.updated_at };
 
 function listProfiles() {
   return all('SELECT * FROM profiles ORDER BY name COLLATE NOCASE').map(rowToProfile);
@@ -124,8 +134,8 @@ function getProfile(id) {
 function createProfile(fields = {}) {
   const t = now();
   run(
-    'INSERT INTO profiles (name, resume, job_description, custom_prompt, answer_style, language, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)',
-    [fields.name || 'New profile', fields.resume || '', fields.jobDescription || '', fields.customPrompt || '',
+    'INSERT INTO profiles (name, resume, job_description, custom_prompt, prior_notes, answer_style, language, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)',
+    [fields.name || 'New profile', fields.resume || '', fields.jobDescription || '', fields.customPrompt || '', fields.priorNotes || '',
       fields.answerStyle || 'detailed', fields.language || 'en', t, t]
   );
   return getProfile(lastId());

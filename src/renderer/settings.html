@@ -58,6 +58,18 @@
           </div>
         </div>
       </fieldset>
+
+      <fieldset>
+        <legend>Earlier rounds</legend>
+        <label for="priorNotes">Notes and records from previous interviews with this company</label>
+        <div class="row">
+          <button type="button" id="priorImport" title="Add the text of a PDF (e.g. a report this app saved) or a text / Markdown file">Import PDF or text file…</button>
+          <input type="file" id="priorFile" accept=".pdf,application/pdf,.txt,.md,.markdown,text/plain,text/markdown" hidden />
+          <button type="button" id="priorClear" title="Empty the notes">Clear</button>
+        </div>
+        <textarea id="priorNotes" placeholder="What was asked in the earlier round, what you answered, who you met, follow-ups you promised… or import the PDF report of that session. The AI uses this for continuity in the next round."></textarea>
+        <p class="hint" id="priorHint">Goes to the AI with the resume and job description, so keep it to what matters. Imported files are added below whatever is here already.</p>
+      </fieldset>
     </section>
 
     <!-- ================================================================ App -->
