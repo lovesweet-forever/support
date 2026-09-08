@@ -126,7 +126,10 @@ key and never reveal it; to replace a key, click the field and paste the new one
      it. Nothing to click.
 3. The interviewer's words appear in the **Question to send** box as they are heard (the live
    guess at the end is corrected as the sentence completes). Edit if needed, then **Enter** or
-   **Send**. The answer streams in; code goes to the docked code panel.
+   **Send**. The answer streams in; code goes to the docked code panel. If the network drops and
+   an answer fails, stalls or comes back cut off, press **Retry** in the Answer bar: the question
+   on screen is asked again and the new answer replaces the old one, on screen and in the saved
+   session, without duplicating the question.
 4. For technical rounds, **attach what is on screen**: **Snap** grabs a screenshot of the display
    the panel is on (the panel itself is never in the shot), **Attach** picks files, and you can
    also **paste** a screenshot (`Win+Shift+S` / `⌘⇧4`, then `Ctrl+V` in the box) or **drop** files

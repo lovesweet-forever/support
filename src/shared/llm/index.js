@@ -87,9 +87,13 @@ export class AnswerEngine {
   /**
    * @param {string} question
    * @param {object[]} [attachments] screenshots / files sent with it (shared/attachments.js)
+   * @param {{replaceLast?: boolean}} [opts] replaceLast: this is the latest question asked
+   *   again (a retry); its previous answer is dropped from the session memory first, so the
+   *   model does not see the same question twice.
    */
-  async answer(question, attachments = []) {
+  async answer(question, attachments = [], { replaceLast = false } = {}) {
     let settings = this.getSettings();
+    if (replaceLast && this.turns.length >= 2) this.turns = this.turns.slice(0, -2);
 
     // Safety net: if the selected provider has no key but another one does,
     // answer with that one rather than failing. The worker normally persists

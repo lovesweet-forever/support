@@ -32,6 +32,8 @@ contextBridge.exposeInMainWorld('copilot', {
   deleteSession: (id) => ipcRenderer.invoke('sessions:delete', id),
   endSession: (id) => ipcRenderer.invoke('sessions:end', id),
   addTurn: (sessionId, turn) => ipcRenderer.invoke('sessions:turn', sessionId, turn),
+  /** A retried question: replace the saved answer of an existing turn. */
+  updateTurn: (turnId, patch) => ipcRenderer.invoke('sessions:turn-update', turnId, patch),
   addTranscript: (sessionId, entry) => ipcRenderer.invoke('sessions:transcript', sessionId, entry),
   /** Save the session report as a PDF; resolves to { path } | { canceled } | { error }. */
   exportPdf: (payload) => ipcRenderer.invoke('report:export-pdf', payload),

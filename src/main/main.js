@@ -371,6 +371,7 @@ ipcMain.handle('sessions:rename', (_e, id, title) => db.renameSession(id, title)
 ipcMain.handle('sessions:delete', (_e, id) => db.deleteSession(id));
 ipcMain.handle('sessions:end', (_e, id) => db.endSession(id));
 ipcMain.handle('sessions:turn', (_e, id, turn) => db.addTurn(id, turn));
+ipcMain.handle('sessions:turn-update', (_e, turnId, patch) => db.updateTurn(turnId, patch));
 ipcMain.handle('sessions:transcript', (_e, id, entry) => db.addTranscript(id, entry));
 ipcMain.handle('open-settings', () => createSettingsWindow());
 

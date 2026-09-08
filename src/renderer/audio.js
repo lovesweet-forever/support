@@ -260,11 +260,14 @@ export class AudioSession {
   /** Replace the AI conversation with a saved session's turns (empty = fresh). */
   setTurns(turns) { this.engine.setTurns(turns); }
 
-  /** Manual send of an exact question (from the box), with optional attachments. */
-  ask(text, attachments = []) {
+  /**
+   * Manual send of an exact question (from the box), with optional attachments.
+   * `opts.replaceLast` re-asks the latest question (see AnswerEngine.answer).
+   */
+  ask(text, attachments = [], opts = {}) {
     const q = (text || '').trim();
     if (!q) return;
     this.detector.reset();
-    this.engine.answer(q, attachments);
+    this.engine.answer(q, attachments, opts);
   }
 }

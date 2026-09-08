@@ -63,6 +63,7 @@ const ui = buildPanel(document.getElementById('root'), {
   onNewSession: newSession,
   onRenameSession: renameSession,
   onDeleteSession: deleteSession,
+  onRetry: retryAnswer,
   onCodeShare: (codeShare) => save({ codeShare })
 });
 
@@ -167,7 +168,7 @@ async function openSession(id) {
   if (!data) { ui.notice('That session no longer exists.'); await refreshSessions(); return; }
   if (session && session.id !== id) api.endSession(session.id);
   session = data.session;
-  qa = data.turns.map((t) => ({ question: t.question, prompt: t.prompt, attachments: t.attachments, answer: t.answer,
+  qa = data.turns.map((t) => ({ turnId: t.id, question: t.question, prompt: t.prompt, attachments: t.attachments, answer: t.answer,
     error: t.error, streaming: false, at: t.at }));
   transcriptLog.splice(0, transcriptLog.length, ...data.transcript);
   awaitingNewQuestion = false;
@@ -181,13 +182,37 @@ async function openSession(id) {
 
 async function persistTurn(entry) {
   const s = await ensureSession();
-  await api.addTurn(s.id, { question: entry.question, prompt: entry.prompt, answer: entry.answer, error: entry.error,
-    at: entry.at, attachments: entry.attachments });
+  if (entry.turnId) {
+    // A retried question: the saved turn is updated, not duplicated.
+    await api.updateTurn(entry.turnId, { prompt: entry.prompt, answer: entry.answer, error: entry.error });
+  } else {
+    entry.turnId = await api.addTurn(s.id, { question: entry.question, prompt: entry.prompt, answer: entry.answer, error: entry.error,
+      at: entry.at, attachments: entry.attachments });
+  }
   refreshSessions();
 }
 let awaitingNewQuestion = false;
-const latest = () => qa[qa.length - 1];
-const viewingLatest = () => viewIndex === qa.length - 1;
+// The entry an answer is currently streaming into (normally the last one; a
+// retried older question streams into its own entry).
+let activeIndex = -1;
+const active = () => qa[activeIndex];
+const viewingActive = () => viewIndex === activeIndex;
+
+// ---- retry: ask the question on screen again -------------------------------
+// For a flaky network: the answer errored, stalled, or came back cut off. The
+// new answer replaces the old one in the same entry and in the saved session.
+let retryIndex = null;
+async function retryAnswer() {
+  const entry = qa[viewIndex];
+  if (!entry) return;
+  retryIndex = viewIndex;
+  await ensureSession();
+  // If this was the latest, completed question, its old answer is already in
+  // the AI's memory of the session — drop it so the retry does not see both.
+  const replaceLast = viewIndex === qa.length - 1 && Boolean(entry.answer) && !entry.error;
+  audio.ask(entry.question, entry.attachments, { replaceLast });
+  ui.notice('Asking again…');
+}
 
 function showQA(index) {
   if (!qa.length) return;
@@ -232,24 +257,35 @@ const audio = new AudioSession({
         if (e.isFinal) ui.appendPending(e.text);
         else ui.setInterimPending(e.text);
         break;
-      case 'answer-start':
-        ui.clearPending();
+      case 'answer-start': {
         for (const entry of qa) entry.streaming = false;
-        qa.push({ question: e.question, prompt: e.prompt, attachments: e.attachments || [], answer: '', streaming: true, error: null, at: Date.now() });
-        viewIndex = qa.length - 1;
-        ui.startAnswer(e.question, e.attachments);
+        const retried = retryIndex !== null && qa[retryIndex] && qa[retryIndex].question === e.question ? qa[retryIndex] : null;
+        retryIndex = null;
+        if (retried) {
+          // Same entry, fresh answer (the original time is kept so the
+          // candidate's spoken reply still lines up with it in the PDF).
+          Object.assign(retried, { prompt: e.prompt, answer: '', streaming: true, error: null });
+          activeIndex = qa.indexOf(retried);
+        } else {
+          ui.clearPending();
+          qa.push({ question: e.question, prompt: e.prompt, attachments: e.attachments || [], answer: '', streaming: true, error: null, at: Date.now() });
+          activeIndex = qa.length - 1;
+        }
+        viewIndex = activeIndex;
+        ui.startAnswer(e.question, qa[activeIndex].attachments);
         ui.setNav({ index: viewIndex, total: qa.length });
         break;
+      }
       case 'answer-delta': {
-        const entry = latest(); if (!entry) break;
+        const entry = active(); if (!entry) break;
         entry.answer += e.text;
-        if (viewingLatest()) ui.updateAnswer(entry.answer);
+        if (viewingActive()) ui.updateAnswer(entry.answer);
         break;
       }
       case 'answer-done': {
-        const entry = latest(); if (!entry) break;
+        const entry = active(); if (!entry) break;
         entry.streaming = false; entry.error = e.error || null;
-        if (viewingLatest()) ui.finishAnswer(e.error);
+        if (viewingActive()) ui.finishAnswer(e.error);
         persistTurn(entry);
         break;
       }

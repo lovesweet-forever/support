@@ -104,6 +104,7 @@ export function buildPanel(root, handlers) {
         <span class="section-actions">
           <button class="mini" data-font-dec>A&minus;</button>
           <button class="mini" data-font-inc>A+</button>
+          <button class="mini retry" data-retry title="Ask this question again — for an answer that failed, stalled or was cut off by the network" disabled>&#8635; Retry</button>
           <button class="mini" data-export title="Save every question and answer of this session as a PDF">PDF</button>
           <button class="mini" data-prev disabled>&lsaquo; Prev</button>
           <button class="mini" data-next disabled>Next &rsaquo;</button>
@@ -240,6 +241,7 @@ export function buildPanel(root, handlers) {
   $('[data-font-inc]').onclick = () => handlers.onFont(fontPx + 1);
   el.prev.onclick = () => handlers.onPrev();
   el.next.onclick = () => handlers.onNext();
+  $('[data-retry]').onclick = () => handlers.onRetry();
   const exportBtn = $('[data-export]');
   exportBtn.onclick = async () => {
     exportBtn.disabled = true;
@@ -376,6 +378,7 @@ export function buildPanel(root, handlers) {
 
     startAnswer(question, atts) {
       el.answer.innerHTML = '';
+      $('[data-retry]').classList.remove('urgent');
       if (question || atts?.length) el.answer.append(questionNode(question, atts));
       answerEl = document.createElement('div'); answerEl.className = 'answer-text thinking'; el.answer.append(answerEl);
       syncCode(''); el.answer.scrollTop = 0;
@@ -385,6 +388,8 @@ export function buildPanel(root, handlers) {
       answerEl?.classList.remove('thinking');
       if (error) { const e = document.createElement('div'); e.className = 'empty'; e.textContent = error; el.answer.append(e); }
       answerEl = null;
+      // A failed answer: make Retry the obvious next move.
+      $('[data-retry]').classList.toggle('urgent', Boolean(error));
     },
     renderQA({ question, attachments: atts, answer, streaming, error }) {
       el.answer.innerHTML = '';
@@ -392,6 +397,7 @@ export function buildPanel(root, handlers) {
       const node = document.createElement('div'); node.className = `answer-text${streaming ? ' thinking' : ''}`;
       renderRich(node, answer || ''); el.answer.append(node);
       if (error) { const e = document.createElement('div'); e.className = 'empty'; e.textContent = error; el.answer.append(e); }
+      $('[data-retry]').classList.toggle('urgent', Boolean(error));
       answerEl = streaming ? node : null;
       syncCode(answer || ''); el.answer.scrollTop = 0;
     },
@@ -399,6 +405,8 @@ export function buildPanel(root, handlers) {
       const has = total > 0 && index >= 0;
       el.prev.disabled = !has || index <= 0;
       el.next.disabled = !has || index >= total - 1;
+      $('[data-retry]').disabled = !has;
+      if (!has) $('[data-retry]').classList.remove('urgent');
       el.counter.textContent = has ? `Q ${index + 1} / ${total}` : '';
     },
     setCodeShare(s) { if (typeof s === 'number' && isFinite(s)) { codeShare = Math.min(0.8, Math.max(0.1, s)); if (codeVisible) applyCodeWidth(); } }

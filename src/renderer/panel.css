@@ -87,6 +87,12 @@ dialog.rename .dialog-actions { display: flex; justify-content: flex-end; gap: 6
 button.mini.send { color: var(--accent-fg); background: var(--accent); border-color: transparent; }
 button.mini { height: 20px; padding: 0 8px; font-size: 10px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; }
 button.mini:disabled { opacity: .35; }
+/* Retry: accent-coloured so it is found at a glance; red and pulsing while the answer on screen failed. */
+button.mini.retry { color: var(--accent-fg); background: var(--accent); border-color: transparent; padding: 0 10px; }
+button.mini.retry:hover:not(:disabled) { filter: brightness(1.1); }
+button.mini.retry:disabled { color: inherit; background: var(--surface-2); border-color: var(--border-strong); }
+button.mini.retry.urgent:not(:disabled) { background: var(--danger); box-shadow: 0 0 0 0 var(--danger-ring); animation: retry-pulse 1.4s ease-out 3; }
+@keyframes retry-pulse { 0% { box-shadow: 0 0 0 0 var(--danger-ring); } 70% { box-shadow: 0 0 0 6px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
 .qa-counter { margin-left: 6px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--fg-faint); }
 
 /* ---------------------------------------------------------------- transcript */

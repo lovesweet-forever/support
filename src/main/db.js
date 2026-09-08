@@ -223,6 +223,15 @@ function addTurn(sessionId, { question, prompt, answer, error, at, attachments =
   return turnId;
 }
 
+/** A retried question: replace the saved answer (question, time and attachments stay). */
+function updateTurn(turnId, { prompt, answer, error }) {
+  run('UPDATE turns SET prompt = coalesce(?, prompt), answer = ?, error = ? WHERE id = ?',
+    [prompt ?? null, answer || '', error || null, turnId]);
+  const t = one('SELECT session_id FROM turns WHERE id = ?', [turnId]);
+  if (t) run('UPDATE sessions SET last_active = ? WHERE id = ?', [now(), t.session_id]);
+  return turnId;
+}
+
 function addTranscript(sessionId, { channel, text, at }) {
   run('INSERT INTO transcript (session_id, channel, text, at) VALUES (?,?,?,?)', [sessionId, channel, text, at || now()]);
 }
@@ -230,5 +239,5 @@ function addTranscript(sessionId, { channel, text, at }) {
 module.exports = {
   open, close, flush, PROFILE_FIELDS,
   listProfiles, getProfile, createProfile, updateProfile, deleteProfile,
-  listSessions, createSession, renameSession, endSession, deleteSession, loadSession, addTurn, addTranscript
+  listSessions, createSession, renameSession, endSession, deleteSession, loadSession, addTurn, updateTurn, addTranscript
 };
