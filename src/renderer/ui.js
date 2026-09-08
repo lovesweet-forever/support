@@ -65,7 +65,7 @@ export function buildPanel(root, handlers) {
       </div>
       <div class="warning" data-warning></div>
       <div class="section-label">
-        <span>Interviewer</span>
+        <span>Transcript</span>
         <span class="section-actions">
           <select data-profile title="Profile (company / role) — resume, job description and prompt come from it"></select>
           <select data-session title="Session — pick an earlier one to continue that conversation"></select>
@@ -298,14 +298,15 @@ export function buildPanel(root, handlers) {
       if (!isFinal) {
         let node = interim[channel];
         if (!node) { node = document.createElement('div'); node.className = `turn interim ${channel}`; el.transcript.append(node); interim[channel] = node; }
-        node.innerHTML = '<span class="who">interviewer</span>';
-        node.append(document.createTextNode(text));
+        node.textContent = '';
+        const who = document.createElement('span'); who.className = 'who'; who.textContent = channel === 'candidate' ? 'you' : channel;
+        node.append(who, document.createTextNode(text));
         scroll(el.transcript); return;
       }
       interim[channel]?.remove(); interim[channel] = null;
       const node = document.createElement('div');
       node.className = `turn ${channel}`;
-      const who = document.createElement('span'); who.className = 'who'; who.textContent = channel;
+      const who = document.createElement('span'); who.className = 'who'; who.textContent = channel === 'candidate' ? 'you' : channel;
       node.append(who, document.createTextNode(text));
       el.transcript.append(node);
       while (el.transcript.children.length > 40) el.transcript.firstElementChild.remove();

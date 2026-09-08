@@ -84,6 +84,8 @@ button.mini:disabled { opacity: .35; }
 .transcript { flex: 0 0 13%; min-height: 40px; padding: 0 10px 6px; overflow-y: auto; }
 .turn { margin: 3px 0; }
 .turn .who { margin-right: 5px; font-size: 10px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; color: var(--accent-2); }
+.turn.candidate { color: var(--fg-muted); }
+.turn.candidate .who { color: var(--ok); }
 .turn.interim { color: var(--fg-dim); font-style: italic; }
 .empty { padding: 10px 0; color: var(--fg-ghost); font-style: italic; }
 

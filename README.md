@@ -134,10 +134,13 @@ key and never reveal it; to replace a key, click the field and paste the new one
    sent to the AI provider with the question and are kept for the two most recent questions so
    follow-ups like "explain line 3" still see the screenshot. On macOS, Snap needs *Screen
    Recording* permission for Interview Copilot (System Settings → Privacy & Security).
-5. After the interview, press **PDF** in the Answer bar to save a report: every question with its
-   attachments and answer, timestamps, the AI model used, and the full spoken transcript of both
-   sides. It covers everything since the app was opened; the file opens in a Save dialog
-   (Documents folder by default) and is revealed in the file manager once written.
+5. After the interview, press **PDF** in the Answer bar to save a report. For every question it
+   shows three things: what the **interviewer asked** (with attachments), what the **AI suggested**,
+   and what **you answered** — your own words as heard by the microphone between that question and
+   the next. A full transcript of both sides, in order, follows at the end. Your side is captured
+   while *Also transcribe my microphone* (Setup → App → Capture) is on, which it is by default; the
+   panel's Transcript pane shows both sides live. The file opens in a Save dialog (Documents folder
+   by default) and is revealed in the file manager once written.
 
 | Windows / Linux (global) | macOS (global) | Action |
 |---|---|---|

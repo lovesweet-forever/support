@@ -191,16 +191,19 @@ const audio = new AudioSession({
   emit: (e) => {
     switch (e.type) {
       case 'transcript':
+        // Both sides are kept: the full transcript of the interview goes into
+        // the session and the PDF, where the candidate's words are shown
+        // under the question they answered.
         if (e.isFinal) {
           const entry = { channel: e.channel, text: e.text, at: Date.now() };
           transcriptLog.push(entry);
           if (session) api.addTranscript(session.id, entry);
         }
-        if (e.channel !== 'interviewer') break;
-        if (awaitingNewQuestion) { ui.clearTranscript(); awaitingNewQuestion = false; }
+        if (awaitingNewQuestion && e.channel === 'interviewer') { ui.clearTranscript(); awaitingNewQuestion = false; }
         ui.addTranscript(e);
-        // Words reach the question box as they are heard; the final sentence
-        // replaces the live guess.
+        if (e.channel !== 'interviewer') break;
+        // The interviewer's words reach the question box as they are heard;
+        // the final sentence replaces the live guess.
         if (e.isFinal) ui.appendPending(e.text);
         else ui.setInterimPending(e.text);
         break;
