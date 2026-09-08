@@ -136,8 +136,21 @@ ${transcriptHtml}
 </body></html>`;
 }
 
-/** e.g. Interview-2026-09-08-1432.pdf */
-export function suggestedReportName(startedAt = Date.now()) {
+/**
+ * The PDF file name: the session title made safe for a file system
+ * (e.g. "Acme — Backend — Sep 8, 2026, 10:00 AM.pdf" -> "Acme - Backend - Sep 8, 2026, 10.00 AM.pdf"),
+ * or "Interview-<date>.pdf" when there is no title.
+ */
+export function suggestedReportName(startedAt = Date.now(), title = '') {
+  const clean = String(title || '')
+    .replace(/[—–]/g, '-')          // dashes Windows keeps but look odd in Explorer
+    .replace(/:/g, '.')             // 10:00 -> 10.00 (":" is illegal on Windows)
+    .replace(/[<>"/\\|?*\x00-\x1f]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/[. ]+$/, '')          // Windows drops trailing dots/spaces
+    .slice(0, 120);
+  if (clean) return `${clean}.pdf`;
   const d = new Date(startedAt);
   const p = (n) => String(n).padStart(2, '0');
   return `Interview-${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}.pdf`;

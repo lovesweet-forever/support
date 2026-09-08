@@ -103,7 +103,8 @@ interview: the profile picker, resume, job description, custom prompt, answer st
   is saved as it happens. For the next round — e.g. the technical interview after the intro call —
   pick the earlier session in the **session picker**: its Q&A comes back on screen and the AI
   continues the same conversation, so it already knows what was discussed. "New session" in the
-  picker starts fresh with the next question. **PDF** exports the session that is open.
+  picker starts fresh with the next question. **Rename** and **Delete** next to the picker act on
+  the selected session. **PDF** exports the session that is open, named after the session.
 - Everything is stored locally in SQLite (`copilot.sqlite` in the app data folder, screenshots as
   files next to it). Deleting a profile deletes its sessions.
 
@@ -138,9 +139,9 @@ key and never reveal it; to replace a key, click the field and paste the new one
    shows three things: what the **interviewer asked** (with attachments), what the **AI suggested**,
    and what **you answered** — your own words as heard by the microphone between that question and
    the next. A full transcript of both sides, in order, follows at the end. Your side is captured
-   while *Also transcribe my microphone* (Setup → App → Capture) is on, which it is by default; the
-   panel's Transcript pane shows both sides live. The file opens in a Save dialog (Documents folder
-   by default) and is revealed in the file manager once written.
+   while *Also transcribe my microphone* (Setup → App → Capture) is on, which it is by default. Your
+   words are saved silently — the panel only ever shows the interviewer. The file opens in a Save
+   dialog (Documents folder by default) and is revealed in the file manager once written.
 
 | Windows / Linux (global) | macOS (global) | Action |
 |---|---|---|

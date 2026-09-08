@@ -65,13 +65,24 @@ export function buildPanel(root, handlers) {
       </div>
       <div class="warning" data-warning></div>
       <div class="section-label">
-        <span>Transcript</span>
+        <span>Interviewer</span>
         <span class="section-actions">
           <select data-profile title="Profile (company / role) — resume, job description and prompt come from it"></select>
           <select data-session title="Session — pick an earlier one to continue that conversation"></select>
           <button class="mini" data-new-session title="Start a fresh session for this profile">New</button>
+          <button class="mini" data-rename-session title="Rename the selected session" disabled>Rename</button>
+          <button class="mini" data-delete-session title="Delete the selected session and everything saved in it" disabled>Delete</button>
         </span>
       </div>
+      <dialog class="rename" data-rename-dialog>
+        <form method="dialog">
+          <label>Session name<input type="text" data-rename-input maxlength="120" spellcheck="false" /></label>
+          <div class="dialog-actions">
+            <button type="button" class="mini" data-rename-cancel>Cancel</button>
+            <button type="submit" class="mini send" data-rename-ok>Rename</button>
+          </div>
+        </form>
+      </dialog>
       <div class="transcript" data-transcript><div class="empty">Waiting for the interviewer…</div></div>
       <div class="section-label">
         <span>Question to send</span>
@@ -146,6 +157,24 @@ export function buildPanel(root, handlers) {
   el.profile.onchange = () => handlers.onProfile(Number(el.profile.value));
   el.session.onchange = () => handlers.onSession(el.session.value ? Number(el.session.value) : null);
   $('[data-new-session]').onclick = () => handlers.onNewSession();
+  // Rename: a small in-panel dialog (window.prompt does not exist in Electron).
+  const renameDialog = $('[data-rename-dialog]');
+  const renameInput = $('[data-rename-input]');
+  $('[data-rename-session]').onclick = () => {
+    if (!el.session.value) return;
+    renameInput.value = el.session.selectedOptions[0]?.dataset.title || '';
+    renameDialog.showModal();
+    renameInput.select();
+  };
+  $('[data-rename-cancel]').onclick = () => renameDialog.close();
+  renameDialog.querySelector('form').onsubmit = (e) => {
+    e.preventDefault();
+    const title = renameInput.value.trim();
+    renameDialog.close();
+    if (title) handlers.onRenameSession(title);
+  };
+  renameInput.addEventListener('keydown', (e) => e.stopPropagation());
+  $('[data-delete-session]').onclick = () => { if (el.session.value) handlers.onDeleteSession(); };
   const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   el.provider.onchange = () => { populateModels(el.provider.value); handlers.onProvider(el.provider.value, el.model.value); };
   el.model.onchange = () => handlers.onModel(el.model.value);
@@ -277,8 +306,11 @@ export function buildPanel(root, handlers) {
     setSessions(list, currentId) {
       const label = (s) => `${s.title} · ${s.turnCount} Q`;
       el.session.innerHTML = ['<option value="">New session</option>',
-        ...list.map((s) => `<option value="${s.id}">${esc(label(s))}</option>`)].join('');
+        ...list.map((s) => `<option value="${s.id}" data-title="${esc(s.title)}">${esc(label(s))}</option>`)].join('');
       el.session.value = currentId ? String(currentId) : '';
+      const has = Boolean(el.session.value);
+      $('[data-rename-session]').disabled = !has;
+      $('[data-delete-session]').disabled = !has;
     },
     setFont(px) { fontPx = Math.min(28, Math.max(11, Math.round(px))); root.querySelector('.panel').style.setProperty('--answer-font', `${fontPx}px`); },
     setAiConfig({ provider, model, answerStyle, availability: avail }) {

@@ -76,6 +76,15 @@ button.start.stop { background: var(--danger); }
 .section-actions select { height: 20px; padding: 0 4px; font-size: 10.5px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--fg); }
 select[data-profile] { max-width: 150px; }
 select[data-session] { max-width: 230px; }
+
+/* Rename-session dialog */
+dialog.rename { min-width: 320px; padding: 14px 16px; color: var(--fg); background: var(--bg-page); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: 0 12px 40px rgba(0, 0, 0, .45); }
+dialog.rename::backdrop { background: rgba(0, 0, 0, .35); }
+dialog.rename label { display: block; font-size: 11px; font-weight: 600; letter-spacing: .4px; text-transform: uppercase; color: var(--fg-faint); }
+dialog.rename input { display: block; width: 100%; margin-top: 6px; padding: 7px 9px; font: inherit; font-size: 13px; color: var(--fg); background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: 7px; }
+dialog.rename input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+dialog.rename .dialog-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 12px; }
+button.mini.send { color: var(--accent-fg); background: var(--accent); border-color: transparent; }
 button.mini { height: 20px; padding: 0 8px; font-size: 10px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; }
 button.mini:disabled { opacity: .35; }
 .qa-counter { margin-left: 6px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--fg-faint); }

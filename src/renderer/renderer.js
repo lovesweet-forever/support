@@ -61,6 +61,8 @@ const ui = buildPanel(document.getElementById('root'), {
   onProfile: (id) => api.selectProfile(id), // the settings:changed broadcast does the rest
   onSession: (id) => (id ? openSession(id) : closeSession()),
   onNewSession: newSession,
+  onRenameSession: renameSession,
+  onDeleteSession: deleteSession,
   onCodeShare: (codeShare) => save({ codeShare })
 });
 
@@ -83,7 +85,7 @@ async function exportPdf() {
   if (!qa.length && !transcriptLog.length) { ui.notice('Nothing to export yet.'); return; }
   const began = session?.startedAt || startedAt;
   const html = buildReportHtml({ qa, transcript: transcriptLog, settings, startedAt: began, title: session?.title });
-  const res = await api.exportPdf({ html, suggestedName: suggestedReportName(began) });
+  const res = await api.exportPdf({ html, suggestedName: suggestedReportName(began, session?.title) });
   if (res.path) ui.notice(`Saved ${res.path}`);
   else if (res.error) ui.setWarning(`PDF export failed: ${res.error}`);
 }
@@ -129,6 +131,27 @@ async function newSession() {
   resetConversation();
   await refreshSessions();
   ui.notice(`New session: ${session.title}`);
+}
+
+// Rename / delete the open session (the one selected in the picker).
+async function renameSession(title) {
+  const clean = String(title || '').trim();
+  if (!session || !clean || clean === session.title) return;
+  await api.renameSession(session.id, clean);
+  session = { ...session, title: clean };
+  await refreshSessions();
+  ui.notice(`Renamed to "${clean}"`);
+}
+async function deleteSession() {
+  if (!session) return;
+  const n = qa.length;
+  if (!window.confirm(`Delete "${session.title}"${n ? ` and its ${n} question${n === 1 ? '' : 's'}` : ''}? This cannot be undone.`)) return;
+  await api.deleteSession(session.id);
+  const title = session.title;
+  session = null;
+  resetConversation();
+  await refreshSessions();
+  ui.notice(`Deleted "${title}"`);
 }
 
 // "New session" picked in the dropdown: nothing is created until a question is asked.
@@ -199,9 +222,11 @@ const audio = new AudioSession({
           transcriptLog.push(entry);
           if (session) api.addTranscript(session.id, entry);
         }
-        if (awaitingNewQuestion && e.channel === 'interviewer') { ui.clearTranscript(); awaitingNewQuestion = false; }
-        ui.addTranscript(e);
+        // The candidate's words are saved (session + PDF) but not shown: the
+        // pane stays the interviewer only.
         if (e.channel !== 'interviewer') break;
+        if (awaitingNewQuestion) { ui.clearTranscript(); awaitingNewQuestion = false; }
+        ui.addTranscript(e);
         // The interviewer's words reach the question box as they are heard;
         // the final sentence replaces the live guess.
         if (e.isFinal) ui.appendPending(e.text);
