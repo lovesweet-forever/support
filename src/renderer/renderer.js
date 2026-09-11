@@ -234,6 +234,23 @@ async function sendPending() {
 }
 
 // ---- audio session --------------------------------------------------------
+// Which input carries the interviewer, and whether we already warned that it
+// is silent (once per Start).
+let captureLabel = '';
+let silenceWarned = false;
+function silenceAdvice() {
+  const dev = captureLabel ? `"${captureLabel}"` : 'the system-audio device';
+  if (api.platform === 'darwin') {
+    return `No sound is reaching ${dev}. Set the Mac's sound output (Control Centre → Sound) to your Multi-Output Device, ` +
+      'and in the meeting app set the Speaker to that same device (Teams: Settings → Devices → Speaker; Zoom: Settings → Audio). ' +
+      'The interviewer must be audible through it.';
+  }
+  if (api.platform === 'linux') {
+    return `No sound is reaching ${dev}. The meeting app must play through the default output; if you switched outputs, press Stop and Start again.`;
+  }
+  return `No sound is reaching ${dev}. Make sure the meeting is playing through the default Windows output device and is not muted.`;
+}
+
 const audio = new AudioSession({
   getSettings: () => settings,
   emit: (e) => {
@@ -289,8 +306,22 @@ const audio = new AudioSession({
         persistTurn(entry);
         break;
       }
+      case 'capture':
+        captureLabel = e.label;
+        silenceWarned = false;
+        ui.notice(`Listening to the interviewer on "${captureLabel || 'system audio'}"`);
+        break;
       case 'audio-state':
         ui.setAudioState(e.state);
+        // Connected but hearing nothing for a while: almost always the meeting
+        // audio is not routed to the device we capture. Say so, with the fix.
+        if (e.state === 'silent' && !silenceWarned) {
+          silenceWarned = true;
+          ui.setWarning(silenceAdvice());
+        } else if (e.state === 'hearing' && silenceWarned) {
+          silenceWarned = false;
+          ui.setWarning('');
+        }
         break;
       case 'running':
         ui.setRunning(e.running);

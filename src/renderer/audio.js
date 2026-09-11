@@ -211,6 +211,9 @@ export class AudioSession {
     try {
       const sys = await captureSystemAudio(settings);
       this.streams.system = sys;
+      // Tell the panel which device carries the interviewer, so a silent
+      // capture can be traced to the routing (see renderer.js 'silent').
+      this.emit({ type: 'capture', label: sys.getAudioTracks()[0]?.label || '' });
       await this.pipe(sys, CHANNEL.INTERVIEWER, settings.language, settings.deepgramKey);
     } catch (err) {
       this.emit({ type: 'error', message: `Could not capture system audio: ${err.message}` });

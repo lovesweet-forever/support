@@ -194,6 +194,13 @@ free, open-source [BlackHole](https://existential.audio/blackhole/):
 
 Any other virtual driver (Loopback, Soundflower, VB-Cable) works the same way.
 
+**Started, but nothing is transcribed?** The panel says which device it listens on when you press
+Start, and warns after a few seconds of silence. On macOS that almost always means the meeting is
+not playing through the Multi-Output Device: Teams and Zoom choose their own speaker independently
+of the system output, so set **Speaker** to the Multi-Output Device inside the meeting app too
+(Teams: Settings → Devices → Speaker; Zoom: Settings → Audio), and keep the Mac's sound output on
+it as well. The interviewer must be audible to you through that device for BlackHole to get a copy.
+
 ### Linux
 
 Chromium hides PulseAudio's "Monitor of …" sources from apps, so on **Start** the main process runs
