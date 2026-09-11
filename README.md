@@ -181,9 +181,12 @@ System-audio loopback works out of the box via the app's `getDisplayMedia` handl
 The app captures a **virtual audio device** as if it were a microphone. One-time setup with the
 free, open-source [BlackHole](https://existential.audio/blackhole/):
 
-1. `brew install blackhole-2ch` (or the installer from the site), then reboot if asked.
+1. `brew install --cask blackhole-2ch` (or the `.pkg` installer from the site). The driver is only
+   picked up after the audio daemon restarts: reboot, or run `sudo killall coreaudiod`, then reopen
+   Audio MIDI Setup. If **BlackHole 2ch** is still missing from the device list, check that
+   `/Library/Audio/Plug-Ins/HAL/BlackHole2ch.driver` exists.
 2. Open **Audio MIDI Setup** → **+** → **Create Multi-Output Device**; tick your speakers /
-   headphones **and** BlackHole 2ch.
+   headphones **and** BlackHole 2ch (leave any Teams / Zoom virtual device unticked).
 3. During the call, select that Multi-Output Device as the Mac's **sound output** (Control Centre →
    Sound). You still hear everything; BlackHole gets a copy.
 4. In the app's Setup → **Capture** → **System audio source**, leave **Automatic** (it picks the

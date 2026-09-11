@@ -1,6 +1,6 @@
 {
   "name": "support",
-  "version": "1.0.17",
+  "version": "1.0.19",
   "description": "Desktop interview copilot for Windows, macOS and Linux — live transcription of the interviewer plus AI answers grounded in your resume, in an always-on-top panel. Works with Zoom/Teams/Meet desktop apps via system audio.",
   "author": {
     "name": "Marius Morar",

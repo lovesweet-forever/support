@@ -7,6 +7,7 @@ import { DeepgramChannel } from '../shared/deepgram.js';
 import { QuestionDetector } from '../shared/question-detector.js';
 import { AnswerEngine } from '../shared/llm/index.js';
 import { CHANNEL } from '../shared/constants.js';
+import { pickSystemAudioInput } from '../shared/devices.js';
 
 const STT_SAMPLE_RATE = 16000;
 const WORKLET_URL = new URL('../shared/audio-worklet.js', import.meta.url).href;
@@ -15,10 +16,6 @@ const api = window.copilot;
 const isWin = api.platform === 'win32';
 const isLinux = api.platform === 'linux';
 
-// Inputs that carry system audio: virtual drivers on macOS (BlackHole etc.),
-// and on Linux the source the main process remaps from the output's monitor
-// (label "InterviewCopilotMonitor") or any user-made monitor/loopback source.
-const VIRTUAL_INPUT = /copilot|monitor|blackhole|loopback|soundflower|vb-?audio|vb-?cable|virtual/i;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -71,7 +68,9 @@ async function captureSystemAudio(settings) {
       `the "${label}" source was created but does not show up as an input — pick it (or any "Monitor" source) in Setup → Capture → System audio`
     );
   }
-  const virt = (await audioInputs()).find((d) => VIRTUAL_INPUT.test(d.label));
+  // macOS: the virtual driver the meeting audio is routed to (BlackHole etc.);
+  // see shared/devices.js for how it is chosen among the inputs.
+  const virt = pickSystemAudioInput(await audioInputs());
   if (!virt) {
     throw new Error(
       'macOS needs a virtual audio device (e.g. BlackHole) that the meeting audio is routed to — install one, then pick it in Setup → Capture → System audio'

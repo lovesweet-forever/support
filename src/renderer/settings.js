@@ -249,7 +249,7 @@ $('systemAudioHint').innerHTML = isLinux
     'recording stream to “Monitor of …” in pavucontrol.'
   : isMac
     ? 'macOS has no built-in system-audio capture. Install <a href="https://existential.audio/blackhole/" target="_blank">BlackHole</a> ' +
-      '(<code>brew install blackhole-2ch</code>), create a Multi-Output Device (your speakers + BlackHole) in ' +
+      '(<code>brew install --cask blackhole-2ch</code>, then reboot or <code>sudo killall coreaudiod</code>), create a Multi-Output Device (your speakers + BlackHole — not the Teams / Zoom device) in ' +
       'Audio MIDI Setup, use it as the sound output during the call, then pick BlackHole here.'
     : 'Automatic uses Windows system loopback (whatever you hear). Pick a device only if you route the meeting through a virtual cable.';
 
