@@ -23,6 +23,12 @@ const DEFAULTS = {
   openaiKey: '',
   geminiKey: '',
   deepgramKey: '',
+  // Speech-to-text: 'offline' runs a downloaded model on this machine (see
+  // main/stt), 'deepgram' streams to Deepgram with the key above.
+  sttEngine: 'offline',
+  sttModel: 'parakeet-tdt-0.6b-v3-int8',
+  // Outbound proxy for all API traffic ('' = system settings); see main/proxy.js
+  proxyUrl: '',
   transcribeCandidate: true,
   autoAnswer: false,
   answerFontSize: 15,

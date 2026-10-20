@@ -48,6 +48,7 @@ export function buildPanel(root, handlers) {
         <span class="dot audio off" data-audio></span>
         <span class="title" data-title>Interview Copilot</span>
         <button class="start" data-start>Start</button>
+        <button class="icon status-icon" data-status hidden aria-label="Status"></button>
         <select data-provider title="AI provider"></select>
         <select data-model title="Model"></select>
         <select data-style title="Answer style">
@@ -59,13 +60,14 @@ export function buildPanel(root, handlers) {
         <select data-theme title="Theme">
           ${THEMES.map((t) => `<option value="${t.id}">${t.label}</option>`).join('')}
         </select>
+        <button class="icon" data-guide title="Guide — install, setup and how to use">?</button>
         <button class="icon" data-settings title="Setup">&#9881;</button>
         <button class="icon" data-hide title="Hide (${HIDE_KEY})">&#8211;</button>
         <button class="icon" data-quit title="Quit">&times;</button>
       </div>
-      <div class="warning" data-warning></div>
+      <div class="status-tip" data-status-tip hidden></div>
       <div class="section-label">
-        <span>Interviewer</span>
+        <span class="interviewer-label">Interviewer <span class="capture-source" data-capture hidden></span></span>
         <span class="section-actions">
           <select data-profile title="Profile (company / role) — resume, job description and prompt come from it"></select>
           <select data-session title="Session — pick an earlier one to continue that conversation"></select>
@@ -125,11 +127,11 @@ export function buildPanel(root, handlers) {
     audio: $('[data-audio]'), title: $('[data-title]'), start: $('[data-start]'),
     provider: $('[data-provider]'), model: $('[data-model]'), style: $('[data-style]'), lang: $('[data-lang]'),
     theme: $('[data-theme]'), profile: $('[data-profile]'), session: $('[data-session]'),
-    warning: $('[data-warning]'), transcript: $('[data-transcript]'), pending: $('[data-pending]'),
+    status: $('[data-status]'), tip: $('[data-status-tip]'), transcript: $('[data-transcript]'), pending: $('[data-pending]'),
     attachments: $('[data-attachments]'), file: $('[data-file]'), snap: $('[data-snap]'),
     counter: $('[data-counter]'), content: $('[data-content]'), answer: $('[data-answer]'),
     seam: $('[data-seam]'), codeCol: $('[data-code-col]'), codeBody: $('[data-code-body]'),
-    prev: $('[data-prev]'), next: $('[data-next]')
+    prev: $('[data-prev]'), next: $('[data-next]'), capture: $('[data-capture]')
   };
 
   let answerEl = null;
@@ -150,6 +152,7 @@ export function buildPanel(root, handlers) {
   // ---- header actions
   el.start.onclick = () => handlers.onToggleSession();
   $('[data-settings]').onclick = () => handlers.onOpenSettings();
+  $('[data-guide]').onclick = () => handlers.onOpenGuide();
   $('[data-hide]').onclick = () => handlers.onHide();
   $('[data-quit]').onclick = () => handlers.onQuit();
   el.lang.onchange = () => handlers.onLanguage(el.lang.value);
@@ -189,14 +192,70 @@ export function buildPanel(root, handlers) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
   });
 
+  // ---- status icon next to Start / Stop
+  // A warning (capture problems, missing keys…) stays until it is cleared; a
+  // notice ("Listening on …") fades by itself. Either shows as a small icon
+  // whose tooltip holds the text: hover to read it, click to keep it open.
+  // A new message opens the tooltip briefly so it is not missed.
+  //
+  // The header is a window-drag region: once the mouse moves from the icon
+  // into it, the page gets no more mouse events, so a "mouse left" event
+  // cannot be relied on. The tooltip therefore hides on a short timer that
+  // every mouse move over the icon restarts, and it lets clicks through
+  // (pointer-events: none) unless pinned.
+  const status = { warning: '', notice: '' };
+  let noticeTimer = null;
+  let hideTimer = null;
+  let tipPinned = false;
+  const placeTip = () => {
+    const icon = el.status.getBoundingClientRect();
+    const panel = root.firstElementChild.getBoundingClientRect();
+    el.tip.style.top = `${icon.bottom - panel.top + 6}px`;
+    el.tip.style.left = `${Math.max(8, Math.min(icon.left - panel.left, panel.width - el.tip.offsetWidth - 8))}px`;
+  };
+  const showTip = () => { if (el.status.hidden) return; el.tip.hidden = false; placeTip(); };
+  const hideTip = () => { clearTimeout(hideTimer); if (!tipPinned) el.tip.hidden = true; };
+  const hideLater = (ms) => { clearTimeout(hideTimer); hideTimer = setTimeout(hideTip, ms); };
+  const flashTip = () => { showTip(); hideLater(5000); };
+  const setPinned = (on) => {
+    tipPinned = on;
+    el.tip.classList.toggle('pinned', on);
+    if (on) { clearTimeout(hideTimer); showTip(); } else hideTip();
+  };
+  function renderStatus() {
+    const msg = status.warning || status.notice;
+    const kind = status.warning ? 'alert' : 'info';
+    el.status.hidden = !msg;
+    el.status.className = `icon status-icon ${kind}`;
+    el.status.textContent = status.warning ? '!' : 'i';
+    el.tip.className = `status-tip ${kind}`;
+    el.tip.textContent = msg;
+    if (!msg) { tipPinned = false; el.tip.classList.remove('pinned'); clearTimeout(hideTimer); el.tip.hidden = true; }
+    else if (!el.tip.hidden) placeTip();
+  }
+  // Hovering: shown while the mouse keeps moving over the icon, gone shortly after.
+  const hoverTip = () => { if (!tipPinned) { showTip(); hideLater(1200); } };
+  el.status.addEventListener('mouseenter', hoverTip);
+  el.status.addEventListener('mousemove', hoverTip);
+  el.status.addEventListener('mouseleave', () => { if (!tipPinned) hideLater(200); });
+  el.status.addEventListener('focus', hoverTip);
+  el.status.addEventListener('click', (e) => { e.stopPropagation(); setPinned(!tipPinned); });
+  // Pinned: closes on Escape, a click anywhere else, or the window losing focus.
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && tipPinned) setPinned(false); });
+  document.addEventListener('mousedown', (e) => { if (tipPinned && !el.tip.contains(e.target)) setPinned(false); });
+  window.addEventListener('blur', () => { if (tipPinned) setPinned(false); else hideTip(); });
+  window.addEventListener('resize', () => { if (!el.tip.hidden) placeTip(); });
+
+  const notice = (msg) => {
+    status.notice = msg || '';
+    renderStatus();
+    if (msg) flashTip();
+    clearTimeout(noticeTimer);
+    noticeTimer = setTimeout(() => { if (status.notice === msg) { status.notice = ''; renderStatus(); } }, 6000);
+  };
+
   // ---- attachments (screenshots / files sent with the question)
   let attachments = [];
-  let noticeTimer = null;
-  const notice = (msg) => {
-    el.warning.textContent = msg;
-    clearTimeout(noticeTimer);
-    noticeTimer = setTimeout(() => { if (el.warning.textContent === msg) el.warning.textContent = ''; }, 6000);
-  };
   function renderAttachments() {
     el.attachments.textContent = '';
     attachments.forEach((a, i) => el.attachments.append(chip(a, () => { attachments.splice(i, 1); renderAttachments(); })));
@@ -295,7 +354,18 @@ export function buildPanel(root, handlers) {
   return {
     setAudioState(s) { el.audio.className = `dot audio ${s || 'off'}`; },
     setRunning(on) { el.start.textContent = on ? 'Stop' : 'Start'; el.start.classList.toggle('stop', on); },
-    setWarning(msg) { el.warning.textContent = msg || ''; },
+    setWarning(msg) {
+      const changed = (msg || '') !== status.warning;
+      status.warning = msg || '';
+      renderStatus();
+      if (msg && changed) flashTip();
+    },
+    /** What carries the interviewer while a session runs (e.g. "Mac system audio output (AirPods)"); '' hides it. */
+    setCaptureSource(label) {
+      el.capture.hidden = !label;
+      el.capture.textContent = label ? `· ${label}` : '';
+      el.capture.title = label ? `Listening to the interviewer on: ${label}` : '';
+    },
     /** A short status line that clears itself after a few seconds. */
     notice,
     setLanguage(code) { el.lang.value = code; },

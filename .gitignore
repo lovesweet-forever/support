@@ -1,3 +1,6 @@
 node_modules/
 dist/
 config/keys.json
+native/bin/
+native/mac-audio-tap/.build/
+.DS_Store

@@ -5,8 +5,9 @@
 #   InterviewCopilot-Linux    ->  .AppImage + .deb (x64)
 #
 # The macOS build is unsigned unless you add a Developer ID certificate as
-# secrets (CSC_LINK = base64 .p12, CSC_KEY_PASSWORD) — see the README for what
-# unsigned means for people installing it.
+# secrets (CSC_LINK = base64 .p12, CSC_KEY_PASSWORD), and notarized only when
+# APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD / APPLE_TEAM_ID are set too — see the
+# README for what an unsigned build means for people installing it.
 name: Build
 
 on:
@@ -58,6 +59,11 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.CSC_LINK != '' }}
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          # macOS notarization (needs a Developer ID certificate in CSC_LINK):
+          # Apple ID, an app-specific password for it, and the team id.
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
       - uses: actions/upload-artifact@v4
         with:

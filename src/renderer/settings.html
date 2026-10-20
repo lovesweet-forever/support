@@ -16,6 +16,7 @@
     <nav class="tabs" id="tabs">
       <button type="button" class="tab" data-tab="profile" title="This interview: who you are and what you are applying for">Profile</button>
       <button type="button" class="tab" data-tab="app" title="The app itself: look, AI provider, keys, audio">App</button>
+      <button type="button" class="tab" data-tab="guide" title="How to install, set up and use the app">Guide</button>
       <span class="tabs-hint">Stored locally on this machine, saves as you type.</span>
     </nav>
 
@@ -104,14 +105,52 @@
       </fieldset>
 
       <fieldset>
+        <legend>Transcription</legend>
+        <p class="hint">How the interviewer's (and your) speech becomes text.</p>
+        <div class="engine" id="sttEngine">
+          <label class="engine-card"><input type="radio" name="sttEngine" value="offline" />
+            <span><b>Offline — on this computer</b><br /><span class="hint">A downloaded model runs locally. No key, no internet needed during the interview, nothing is sent anywhere.</span></span></label>
+          <label class="engine-card"><input type="radio" name="sttEngine" value="deepgram" />
+            <span><b>Deepgram (cloud)</b><br /><span class="hint">Streams the audio to Deepgram with the API key below. Lower CPU use; needs internet.</span></span></label>
+        </div>
+        <div id="sttOffline">
+          <label for="sttModel">Model (one covers English, Romanian and Portuguese)</label>
+          <select id="sttModel"></select>
+          <p class="hint" id="sttModelHint"></p>
+          <div class="stt-status">
+            <span id="sttState"></span>
+            <span class="row stt-actions">
+              <button type="button" id="sttDownload">Download</button>
+              <button type="button" id="sttCancel" hidden>Cancel</button>
+              <button type="button" id="sttDelete" hidden>Delete</button>
+              <button type="button" id="sttFolder" title="Open the folder where the models are stored">Folder</button>
+            </span>
+          </div>
+          <div class="progress" id="sttProgress" hidden><div class="bar" id="sttBar"></div></div>
+          <p class="hint" id="sttNote"></p>
+        </div>
+      </fieldset>
+
+      <fieldset>
         <legend>API keys</legend>
         <p class="hint">Keys are shown as their first and last 5 characters and are never revealed. To replace one, click the field and paste the new key (Enter or click away to save, Esc to cancel). A <code>config/keys.json</code> next to the app pre-fills empty fields; a key entered here overrides it, and Remove goes back to it.</p>
         <div class="grid">
           <div><label for="anthropicKey">Anthropic API key</label><div class="key-row"><input type="text" class="key" id="anthropicKey" placeholder="sk-ant-…" autocomplete="off" spellcheck="false" /><button type="button" class="key-remove" data-remove="anthropicKey" hidden>Remove</button></div><p class="hint file-note" data-note="anthropicKey"></p></div>
           <div><label for="openaiKey">OpenAI API key</label><div class="key-row"><input type="text" class="key" id="openaiKey" placeholder="sk-…" autocomplete="off" spellcheck="false" /><button type="button" class="key-remove" data-remove="openaiKey" hidden>Remove</button></div><p class="hint file-note" data-note="openaiKey"></p></div>
           <div><label for="geminiKey">Gemini API key</label><div class="key-row"><input type="text" class="key" id="geminiKey" placeholder="AIza…" autocomplete="off" spellcheck="false" /><button type="button" class="key-remove" data-remove="geminiKey" hidden>Remove</button></div><p class="hint file-note" data-note="geminiKey"></p></div>
-          <div><label for="deepgramKey">Deepgram API key</label><div class="key-row"><input type="text" class="key" id="deepgramKey" placeholder="required for transcription" autocomplete="off" spellcheck="false" /><button type="button" class="key-remove" data-remove="deepgramKey" hidden>Remove</button></div><p class="hint file-note" data-note="deepgramKey"></p></div>
+          <div><label for="deepgramKey">Deepgram API key</label><div class="key-row"><input type="text" class="key" id="deepgramKey" placeholder="only for Transcription = Deepgram" autocomplete="off" spellcheck="false" /><button type="button" class="key-remove" data-remove="deepgramKey" hidden>Remove</button></div><p class="hint file-note" data-note="deepgramKey"></p></div>
         </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Network</legend>
+        <label for="proxyUrl">Proxy (optional)</label>
+        <div class="row">
+          <input type="text" id="proxyUrl" placeholder="http://127.0.0.1:7890  ·  socks5://127.0.0.1:1080  ·  http://user:pass@host:port" spellcheck="false" />
+          <button type="button" id="proxyCheck">Check proxy</button>
+        </div>
+        <p class="hint">Where OpenAI, Anthropic, Gemini or Deepgram are blocked (mainland China, Hong Kong…), route all of the app's API traffic through a proxy: the address of your VPN / proxy client (Clash, V2Ray, Shadowsocks… usually a local port). Leave empty to use the system proxy settings. Saves as you type and takes effect immediately.</p>
+        <div class="proxy-result" id="proxyResult"></div>
       </fieldset>
 
       <fieldset>
@@ -137,6 +176,196 @@
         is visible if you share your screen. Transcribing a call may require the other participants' consent
         where you are.
       </div>
+    </section>
+
+    <!-- ============================================================== Guide -->
+    <section class="tab-page guide" data-tab="guide" hidden>
+      <div class="guide-head">
+        <div>
+          <h1>How to use Interview Copilot</h1>
+          <p class="hint" id="guideVersion"></p>
+        </div>
+        <div class="os-switch" id="guideOs" role="group" aria-label="Show steps for">
+          <button type="button" data-os-pick="mac">macOS</button>
+          <button type="button" data-os-pick="win">Windows</button>
+          <button type="button" data-os-pick="linux">Linux</button>
+        </div>
+      </div>
+
+      <div class="callout" id="guideCapture">
+        <strong>How the app hears the interviewer</strong>
+        <p id="guideCaptureText"></p>
+      </div>
+
+      <fieldset>
+        <legend>1 · Install</legend>
+        <div data-os="mac">
+          <ol>
+            <li>Open the <code>.dmg</code> for your Mac: <b>arm64</b> for Apple silicon (M1 and later), <b>x64</b> for Intel. To check, choose Apple menu → About This Mac.</li>
+            <li>Drag <b>Interview Copilot</b> into <b>Applications</b>.</li>
+            <li>The first open is blocked with <i>"Apple could not verify … is free of malware"</i> unless the build was notarized by Apple. That is macOS Gatekeeper, not a virus. To open it anyway:
+              <ul>
+                <li><b>macOS 15 and later:</b> double-click the app once (it is refused), then go to System Settings → Privacy &amp; Security, scroll to the <b>Security</b> section, and click <b>Open Anyway</b> next to "Interview Copilot". Confirm with your password.</li>
+                <li><b>macOS 14 and earlier:</b> right-click the app → <b>Open</b> → <b>Open</b>.</li>
+                <li><b>Any version, in Terminal:</b> <code>xattr -dr com.apple.quarantine "/Applications/Interview Copilot.app"</code> then open the app normally.</li>
+              </ul>
+              This is needed once per Mac. Builds signed with a Developer ID and notarized open without any of this.
+            </li>
+            <li>macOS asks for permissions the first time each one is needed. Click <b>Allow</b>:
+              <ul>
+                <li><b>System Audio Recording</b>: on the first <b>Start</b>. This is how the app hears the interviewer.</li>
+                <li><b>Microphone</b>: on the first <b>Start</b>. This records your own voice.</li>
+                <li><b>Screen Recording</b>: only the first time you use <b>Snap</b> (screenshot).</li>
+              </ul>
+              If you clicked Don't Allow, turn the app on in System Settings → Privacy &amp; Security → the matching list, then quit and reopen the app.
+            </li>
+          </ol>
+          <p class="hint">Needs macOS 12 or later. Recording the system audio directly needs macOS 14.2 or later. On older macOS, see <b>Older macOS: BlackHole</b> under Troubleshooting.</p>
+        </div>
+        <div data-os="win">
+          <ol>
+            <li>Run <code>InterviewCopilot-Setup-&lt;version&gt;.exe</code> and follow the installer.</li>
+            <li>If Windows SmartScreen appears, click <b>More info</b> → <b>Run anyway</b>.</li>
+            <li>Open <b>Interview Copilot</b> from the Start menu.</li>
+          </ol>
+          <p class="hint">Needs Windows 10 version 2004 or later.</p>
+        </div>
+        <div data-os="linux">
+          <ul>
+            <li><b>AppImage:</b> <code>chmod +x InterviewCopilot-*.AppImage &amp;&amp; ./InterviewCopilot-*.AppImage</code>. On Ubuntu 22.04 and later, first run <code>sudo apt install libfuse2</code>.</li>
+            <li><b>.deb:</b> <code>sudo apt install ./InterviewCopilot-*.deb</code>, then open Interview Copilot from the app menu.</li>
+            <li><b>Tarball:</b> <code>tar xzf InterviewCopilot-*.tar.gz &amp;&amp; cd InterviewCopilot-*-x64 &amp;&amp; ./run.sh</code></li>
+          </ul>
+          <p class="hint">Needs PulseAudio or PipeWire with <code>pactl</code> (package <code>pulseaudio-utils</code>).</p>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>2 · Set up once (App tab)</legend>
+        <ol>
+          <li><b>API keys</b>
+            <ul>
+              <li>Add a key for at least one AI provider: <b>Anthropic</b> (Claude), <b>OpenAI</b> or <b>Gemini</b>.</li>
+              <li>A <b>Deepgram</b> key is only needed if you choose Deepgram under Transcription.</li>
+            </ul>
+          </li>
+          <li><b>Transcription</b> (speech to text)
+            <ul>
+              <li><b>Offline</b> (default): click <b>Download</b> once to get the model (about 670 MB). It runs on this computer, works without internet and sends nothing anywhere. One model covers English, Romanian and Portuguese.</li>
+              <li><b>Deepgram</b>: uses the cloud with an API key instead. Lighter on the CPU.</li>
+            </ul>
+          </li>
+          <li><b>AI answers</b>: pick the <b>Provider</b> you have a key for, then a <b>Model</b>.</li>
+          <li><b>Capture</b>
+            <ul>
+              <li><b>System audio source</b>: leave it on <b>Automatic</b>. <span data-os="mac">It records the Mac's system audio output.</span><span data-os="win">It records Windows system audio.</span><span data-os="linux">It mirrors your default output.</span></li>
+              <li><b>Microphone (you)</b>: <b>System default microphone</b> or your headset mic. <span data-os="mac">Never pick BlackHole here.</span></li>
+              <li><b>Also transcribe my microphone</b>: keep this on to save your own answers in the PDF report.</li>
+              <li><b>Answer automatically</b>: on = an answer starts as soon as a question is detected. Off = you decide when to press Send.</li>
+            </ul>
+          </li>
+          <li><b>Network</b>: only if OpenAI, Anthropic, Gemini, Deepgram or the model download are blocked where you are. Enter your proxy address, then click <b>Check proxy</b>.</li>
+          <li><b>Appearance</b>: theme and font, whatever you like.</li>
+        </ol>
+      </fieldset>
+
+      <fieldset>
+        <legend>3 · Before each interview (Profile tab)</legend>
+        <ol>
+          <li>Create a <b>profile</b> for the company or role: click <b>New</b>, or <b>Duplicate</b> an existing one.</li>
+          <li>Paste your <b>Resume</b> and the <b>Job description</b>. Adjust the <b>Custom prompt</b>, <b>Answer style</b> and <b>Meeting language</b> if needed.</li>
+          <li>For a second or later round, add notes under <b>Earlier rounds</b>, or import the PDF report from the previous round.</li>
+        </ol>
+      </fieldset>
+
+      <fieldset>
+        <legend>4 · During the interview</legend>
+        <ol>
+          <li>Join the call in Zoom, Teams, Meet or any other app, and make sure you can hear the interviewer.
+            <span data-os="mac">Any speaker or headphones work. Nothing needs to be routed.</span>
+            <span data-os="win">Any output device works.</span>
+            <span data-os="linux">If you change the output device mid-call, press Stop and then Start.</span>
+          </li>
+          <li>In the panel, pick the <b>profile</b> and press <b>Start</b>. The bar above the transcript shows what the app listens to, for example <i>Interviewer · <span data-os="mac">Mac system audio output (MacBook Pro Speakers)</span><span data-os="win">System audio</span><span data-os="linux">InterviewCopilotMonitor</span></i>.</li>
+          <li>The dot in the top-left corner shows the audio link:
+            <ul>
+              <li><span class="dot-demo ok"></span> Green: connected.</li>
+              <li><span class="dot-demo pulse"></span> Pulsing green: hearing the interviewer.</li>
+              <li><span class="dot-demo bad"></span> Red: disconnected or an error.</li>
+            </ul>
+          </li>
+          <li>The interviewer's words appear in <b>Question to send</b>. Edit them if needed, then press <b>Enter</b> or <b>Send</b>. The answer streams in, with code in the panel on the right.</li>
+          <li>For a coding or on-screen question, click <b>Snap</b> for a screenshot, or <b>Attach</b> / paste / drop a file. Then send.</li>
+          <li>If an answer fails or is cut off, press <b>↻ Retry</b>. <b>‹ Prev</b> and <b>Next ›</b> flip through earlier answers.</li>
+        </ol>
+        <table class="keys">
+          <thead><tr><th>Shortcut (works from any app)</th><th>Action</th></tr></thead>
+          <tbody>
+            <tr><td><kbd data-key="I"></kbd></td><td>Show / hide the panel</td></tr>
+            <tr><td><kbd data-key="A"></kbd></td><td>Send the question box now</td></tr>
+            <tr><td><kbd data-key="S"></kbd></td><td>Start / stop</td></tr>
+            <tr><td><kbd data-key="↑"></kbd> / <kbd data-key="↓"></kbd></td><td>Bigger / smaller answer text</td></tr>
+          </tbody>
+        </table>
+      </fieldset>
+
+      <fieldset>
+        <legend>5 · After the interview</legend>
+        <ul>
+          <li>Press <b>Stop</b>, then <b>PDF</b> to save a report: every question, the AI's suggestion, what you answered, and the full transcript.</li>
+          <li>Everything is saved on this computer as a <b>session</b>. For the next round, pick that session in the panel's session list and the AI continues with the same context.</li>
+        </ul>
+      </fieldset>
+
+      <fieldset>
+        <legend>Troubleshooting</legend>
+        <details open>
+          <summary>"No sound is reaching …" / nothing is transcribed</summary>
+          <div data-os="mac">
+            <ol>
+              <li>Make sure you can hear the interviewer on this Mac and the meeting isn't muted. The app records exactly what the Mac plays.</li>
+              <li>Check the permission: System Settings → Privacy &amp; Security → <b>Screen &amp; System Audio Recording</b> → <b>System Audio Recording Only</b> → turn on <b>Interview Copilot</b>. Then quit and reopen the app.</li>
+              <li>In Setup → App → Capture, set <b>System audio source</b> to <b>Automatic</b>. If it is set to BlackHole, the app only hears what is routed to BlackHole.</li>
+              <li>Press <b>Stop</b>, then <b>Start</b>.</li>
+            </ol>
+          </div>
+          <div data-os="win"><p>The meeting must play through Windows' default output device and must not be muted. Leave <b>System audio source</b> on <b>Automatic</b>, then press Stop and Start.</p></div>
+          <div data-os="linux"><p>The meeting must play through the default output. If you changed outputs, press Stop and Start. If it still fails, open <code>pavucontrol</code> → Recording and set Interview Copilot to <i>Monitor of &lt;your output&gt;</i>.</p></div>
+        </details>
+        <details data-os="mac">
+          <summary>"Apple could not verify … is free of malware" / "is damaged and can't be opened"</summary>
+          <p>Gatekeeper blocks apps that Apple has not notarized; the app is fine. Open it once with <b>Open Anyway</b> (System Settings → Privacy &amp; Security → Security) on macOS 15+, right-click → Open on older macOS, or remove the quarantine flag in Terminal: <code>xattr -dr com.apple.quarantine "/Applications/Interview Copilot.app"</code>. If the app was already moved to the Trash by macOS, put it back in Applications first.</p>
+        </details>
+        <details data-os="mac">
+          <summary>The permission prompt never appeared</summary>
+          <p>Open System Settings → Privacy &amp; Security → Screen &amp; System Audio Recording. Under <b>System Audio Recording Only</b>, click <b>+</b>, add <b>Interview Copilot</b> from Applications and turn it on. Then quit and reopen the app.</p>
+        </details>
+        <details data-os="mac">
+          <summary>Older macOS (before 14.2): BlackHole</summary>
+          <ol>
+            <li>Install BlackHole: <code>brew install --cask blackhole-2ch</code>, then restart the Mac.</li>
+            <li>Open <b>Audio MIDI Setup</b> → <b>+</b> → <b>Create Multi-Output Device</b>. Tick your speakers or headphones <b>and</b> BlackHole 2ch. Set your speakers as the <b>Primary Device</b> and turn on <b>Drift Correction</b> for BlackHole.</li>
+            <li>Right-click the Multi-Output Device → <b>Use This Device For Sound Output</b>. In Zoom or Teams, set the <b>Speaker</b> to that device too.</li>
+            <li>In Setup → Capture, leave <b>Automatic</b> or pick <b>BlackHole 2ch</b>. The Mac's volume keys don't work with a Multi-Output Device; set the volume in Audio MIDI Setup instead.</li>
+          </ol>
+        </details>
+        <details>
+          <summary>Words appear late, or the computer gets slow during the call</summary>
+          <p>Offline transcription runs the model on your CPU. Words arrive about a second after they are spoken and the sentence settles when the speaker pauses. If the computer struggles, close other heavy apps or switch Transcription to <b>Deepgram</b> in Setup → App.</p>
+        </details>
+        <details>
+          <summary>"The transcription model is not downloaded" / the download fails</summary>
+          <p>Setup → App → Transcription → <b>Download</b>. The files come from huggingface.co and github.com; if those are blocked where you are, set a proxy under <b>Network</b> first — the download uses it. A stopped download continues where it left off.</p>
+        </details>
+        <details>
+          <summary>"Deepgram socket error" or answers never arrive</summary>
+          <p>Check the keys in Setup → App → API keys. If those services are blocked on your network, set a proxy under <b>Network</b> and click <b>Check proxy</b>.</p>
+        </details>
+        <details>
+          <summary>Snap (screenshot) fails</summary>
+          <p><span data-os="mac">Allow Screen Recording for Interview Copilot in System Settings → Privacy &amp; Security, then quit and reopen the app.</span><span data-os="win linux">Try again, or paste a screenshot instead: <kbd>Win+Shift+S</kbd> on Windows, then <kbd>Ctrl+V</kbd> in the question box.</span></p>
+        </details>
+      </fieldset>
     </section>
 
     <div id="saved">Saved</div>

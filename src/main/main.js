@@ -4,8 +4,10 @@
 // Platform notes
 //  - Windows: the interviewer's audio comes from Electron's display-media
 //    loopback (setDisplayMediaRequestHandler with audio: 'loopback').
-//  - macOS: Electron has no system-audio loopback, so the renderer captures a
-//    virtual audio device (BlackHole etc.) as an input instead (see
+//  - macOS 14.2+: a native helper records the system audio output with a Core
+//    Audio process tap and the main process streams its PCM to the renderer
+//    (see main/mac-audio-tap.js). Older macOS, or a device picked in Setup,
+//    captures a virtual audio device (BlackHole etc.) as an input instead (see
 //    renderer/audio.js). The main process handles the microphone permission
 //    prompt and installs an application menu — without one, Cmd+C / Cmd+V /
 //    Cmd+Q do not work in the setup window.
@@ -25,6 +27,9 @@ const fs = require('fs');
 const path = require('path');
 const settings = require('./settings');
 const db = require('./db');
+const proxy = require('./proxy');
+const macAudioTap = require('./mac-audio-tap');
+const stt = require('./stt');
 
 let panel = null;
 let settingsWin = null;
@@ -160,8 +165,12 @@ function createPanel() {
 const TITLEBAR_HEIGHT = 36;
 let chrome = { color: '#10131a', symbolColor: '#f2f4f8' };
 
-function createSettingsWindow() {
+const SETUP_TABS = ['profile', 'app', 'guide'];
+
+function createSettingsWindow(tab) {
+  if (!SETUP_TABS.includes(tab)) tab = undefined;
   if (settingsWin && !settingsWin.isDestroyed()) {
+    if (tab) settingsWin.webContents.send('settings:show-tab', tab);
     settingsWin.show();
     settingsWin.focus();
     return;
@@ -203,7 +212,7 @@ function createSettingsWindow() {
     if (/^https:\/\//.test(url)) shell.openExternal(url);
     return { action: 'deny' };
   });
-  settingsWin.loadFile(path.join(__dirname, '..', 'renderer', 'settings.html'));
+  settingsWin.loadFile(path.join(__dirname, '..', 'renderer', 'settings.html'), tab ? { query: { tab } } : undefined);
   settingsWin.on('closed', () => {
     settingsWin = null;
   });
@@ -211,7 +220,7 @@ function createSettingsWindow() {
 
 // System audio: on getDisplayMedia, hand back a screen source plus loopback
 // audio (system output). The renderer keeps only the audio track. Loopback is
-// Windows-only in Electron; on macOS the renderer never calls getDisplayMedia.
+// Windows-only here; macOS uses the native helper and never calls getDisplayMedia.
 function wireLoopbackAudio() {
   session.defaultSession.setDisplayMediaRequestHandler(
     (request, callback) => {
@@ -252,7 +261,8 @@ function installAppMenu() {
         submenu: [
           { role: 'about' },
           { type: 'separator' },
-          { label: 'Setup (resume, keys, model)…', accelerator: 'Command+,', click: createSettingsWindow },
+          { label: 'Setup (resume, keys, model)…', accelerator: 'Command+,', click: () => createSettingsWindow() },
+          { label: 'Guide (install, setup, use)…', click: () => createSettingsWindow('guide') },
           { label: `Show / hide panel  (${keyLabel(SHORTCUTS.toggle)})`, click: togglePanel },
           { type: 'separator' },
           { role: 'hide' },
@@ -278,7 +288,8 @@ function createTray() {
   }
   const menu = Menu.buildFromTemplate([
     { label: `Show / hide panel  (${keyLabel(SHORTCUTS.toggle)})`, click: togglePanel },
-    { label: 'Setup (resume, keys, model)…', click: createSettingsWindow },
+    { label: 'Setup (resume, keys, model)…', click: () => createSettingsWindow() },
+    { label: 'Guide (install, setup, use)…', click: () => createSettingsWindow('guide') },
     { type: 'separator' },
     { label: 'Quit', click: () => app.quit() }
   ]);
@@ -330,6 +341,7 @@ ipcMain.handle('settings:set', (_e, patch) => {
   for (const [k, v] of Object.entries(patch || {})) (db.PROFILE_FIELDS.includes(k) ? profilePatch : rest)[k] = v;
   if (Object.keys(profilePatch).length && activeProfileId()) db.updateProfile(activeProfileId(), profilePatch);
   if (Object.keys(rest).length) settings.set(rest);
+  if (rest.proxyUrl !== undefined) proxy.applyProxy(session.defaultSession, rest.proxyUrl).catch(() => {});
   // Push the change to whichever window did not originate it.
   return broadcastSettings();
 });
@@ -373,7 +385,11 @@ ipcMain.handle('sessions:end', (_e, id) => db.endSession(id));
 ipcMain.handle('sessions:turn', (_e, id, turn) => db.addTurn(id, turn));
 ipcMain.handle('sessions:turn-update', (_e, turnId, patch) => db.updateTurn(turnId, patch));
 ipcMain.handle('sessions:transcript', (_e, id, entry) => db.addTranscript(id, entry));
-ipcMain.handle('open-settings', () => createSettingsWindow());
+
+// Proxy test from Setup: tries the (possibly unsaved) address against every
+// provider endpoint in a throwaway session.
+ipcMain.handle('proxy:check', (_e, url) => proxy.checkProxy(url));
+ipcMain.handle('open-settings', (_e, tab) => createSettingsWindow(tab));
 
 // The Setup page reports its theme colours so the window controls overlay and
 // the window background follow the theme.
@@ -480,6 +496,16 @@ ipcMain.handle('media:ensure-mic', async () => {
   return systemPreferences.askForMediaAccess('microphone');
 });
 
+// Offline speech-to-text: models, downloads and the recognition process.
+stt.register(() => mergedSettings());
+
+// macOS: record the system audio output through the native helper. The PCM
+// goes to the window that asked (the panel).
+ipcMain.handle('mac-tap:info', () => macAudioTap.info());
+ipcMain.handle('mac-tap:start', (e) => macAudioTap.start(e.sender));
+ipcMain.handle('mac-tap:stop', () => macAudioTap.stop());
+ipcMain.handle('app:info', () => ({ version: app.getVersion(), macosVersion: isMac ? process.getSystemVersion() : '' }));
+
 // Linux: create / remove the temporary source that mirrors the default output.
 // Resolves to the device label the renderer should look for.
 ipcMain.handle('linux:ensure-monitor-source', () => ensureMonitorSource());
@@ -487,9 +513,15 @@ ipcMain.handle('linux:release-monitor-source', () => releaseMonitorSource());
 
 // --------------------------------------------------------------- lifecycle
 
+// Proxies that need a username / password challenge the first request.
+app.on('login', proxy.handleLogin);
+
 app.whenReady().then(async () => {
   await db.open();
   ensureProfiles();
+  // Route every request (AI providers, Deepgram) through the configured proxy
+  // before any window can make one.
+  await proxy.applyProxy(session.defaultSession, settings.get().proxyUrl).catch(() => {});
   installAppMenu();
   wireLoopbackAudio();
   createPanel();
@@ -504,6 +536,8 @@ app.whenReady().then(async () => {
 
 app.on('will-quit', (e) => {
   globalShortcut.unregisterAll();
+  macAudioTap.stop();
+  stt.stopWorker();
   db.close(); // flushes any pending write
   if (monitorModule) {
     // Don't leave the remapped source behind in PulseAudio.

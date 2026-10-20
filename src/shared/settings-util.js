@@ -18,6 +18,11 @@ export const DEFAULT_SETTINGS = {
   openaiKey: '',
   geminiKey: '',
   deepgramKey: '',
+  // Speech-to-text engine: 'offline' (downloaded model) or 'deepgram'
+  sttEngine: 'offline',
+  sttModel: 'parakeet-tdt-0.6b-v3-int8',
+  // Outbound proxy for all API traffic ('' = system settings)
+  proxyUrl: '',
 
   // Capture / UI
   transcribeCandidate: true,

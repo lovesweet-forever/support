@@ -72,6 +72,9 @@ button.start.stop { background: var(--danger); }
   color: var(--fg-faint);
 }
 .section-actions { display: flex; gap: 6px; align-items: center; }
+/* What the interviewer is heard through, next to the section title while running. */
+.interviewer-label { display: flex; align-items: baseline; gap: 5px; min-width: 0; }
+.capture-source { overflow: hidden; max-width: 320px; font-weight: 500; letter-spacing: 0; text-transform: none; white-space: nowrap; text-overflow: ellipsis; color: var(--fg-muted); }
 /* Profile / session pickers live in a section bar; undo its uppercase styling. */
 .section-actions select { height: 20px; padding: 0 4px; font-size: 10.5px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--fg); }
 select[data-profile] { max-width: 150px; }
@@ -168,8 +171,24 @@ button.mini.retry.urgent:not(:disabled) { background: var(--danger); box-shadow:
 pre.code .lang { display: block; margin-bottom: 6px; font-size: 10px; font-weight: 700; letter-spacing: .7px; text-transform: uppercase; color: var(--accent-2); user-select: none; }
 pre.code code { font: inherit; color: inherit; }
 
-.warning { padding: 5px 10px; font-size: 11px; color: var(--danger-fg); background: var(--danger-soft); border-bottom: 1px solid var(--danger-border); }
-.warning:empty { display: none; }
+/* Status icon beside Start / Stop and its tooltip (see ui.js renderStatus). */
+.status-icon { width: 18px; height: 18px; font-size: 11px; font-weight: 800; line-height: 1; border-radius: 50%; border: 1px solid transparent; }
+.status-icon[hidden] { display: none; }
+.status-icon.alert { color: var(--danger-fg); background: var(--danger-soft); border-color: var(--danger-border); }
+.status-icon.info { color: var(--accent-2); background: color-mix(in srgb, var(--accent) 14%, transparent); border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
+.status-icon:hover { filter: brightness(1.15); }
+.status-tip {
+  position: absolute; z-index: 30; max-width: min(380px, calc(100% - 16px));
+  padding: 8px 10px; font-size: 11.5px; line-height: 1.4; white-space: pre-wrap; user-select: text;
+  /* Opaque: it floats over the transcript and must stay readable. */
+  color: var(--fg); background: color-mix(in srgb, var(--accent) 12%, var(--bg-page)); border: 1px solid var(--border-strong); border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .35);
+}
+.status-tip[hidden] { display: none; }
+/* Click-through while it is only hovered; solid (text can be selected) once pinned by a click. */
+.status-tip { pointer-events: none; }
+.status-tip.pinned { pointer-events: auto; }
+.status-tip.alert { color: var(--danger-fg); background: color-mix(in srgb, var(--danger) 16%, var(--bg-page)); border-color: var(--danger-border); }
 
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-thumb { background: var(--surface-hover); border-radius: 4px; }

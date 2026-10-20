@@ -15,11 +15,12 @@
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
+    "build:mac-tap": "sh native/mac-audio-tap/build.sh",
     "pack": "electron-builder --dir",
     "dist:win": "electron-builder --win --x64",
-    "dist:mac": "electron-builder --mac --arm64 --x64",
-    "dist:mac:arm64": "electron-builder --mac --arm64",
-    "dist:mac:x64": "electron-builder --mac --x64",
+    "dist:mac": "npm run build:mac-tap && node scripts/ensure-sherpa-arch.js arm64 x64 && electron-builder --mac --arm64 --x64",
+    "dist:mac:arm64": "npm run build:mac-tap && node scripts/ensure-sherpa-arch.js arm64 && electron-builder --mac --arm64",
+    "dist:mac:x64": "npm run build:mac-tap && node scripts/ensure-sherpa-arch.js x64 && electron-builder --mac --x64",
     "dist:linux": "electron-builder --linux --x64",
     "dist:linux:appimage": "electron-builder --linux AppImage --x64",
     "dist:linux:deb": "electron-builder --linux deb --x64",
@@ -36,6 +37,10 @@
     "files": [
       "src/**/*",
       "!**/*.map"
+    ],
+    "asarUnpack": [
+      "node_modules/sherpa-onnx-node/**",
+      "node_modules/sherpa-onnx-*/**"
     ],
     "extraResources": [
       {
@@ -79,12 +84,22 @@
           ]
         }
       ],
+      "extraResources": [
+        {
+          "from": "native/bin",
+          "to": "bin",
+          "filter": [
+            "copilot-audio-tap"
+          ]
+        }
+      ],
       "category": "public.app-category.productivity",
       "artifactName": "InterviewCopilot-${version}-${arch}.${ext}",
       "minimumSystemVersion": "12.0",
       "darkModeSupport": true,
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
+      "notarize": true,
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
       "extendInfo": {
@@ -150,6 +165,7 @@
   },
   "dependencies": {
     "pdfjs-dist": "^4.10.38",
+    "sherpa-onnx-node": "^1.13.8",
     "sql.js": "^1.14.2"
   }
 }

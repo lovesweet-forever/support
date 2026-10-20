@@ -2,8 +2,16 @@
 //
 // Browser WebSockets cannot set an Authorization header, so the key travels as
 // a subprotocol pair — the form Deepgram documents for browser clients.
+//
+// Question boundaries: Deepgram keeps revising an utterance until the speaker
+// pauses, and every interim / final result repeats it from its first word. So
+// when a question is sent mid-utterance, the results that follow would bring
+// the sent words back. cut() marks a point on the audio timeline; words spoken
+// before it are dropped from later results (and reported once with
+// `stale: true`, so the saved transcript stays complete).
 
 const ENDPOINT = 'wss://api.deepgram.com/v1/listen';
+const SAMPLE_RATE = 16000;
 const KEEPALIVE_MS = 8000; // Deepgram closes an idle socket at ~10s
 const MAX_BACKOFF_MS = 8000;
 
@@ -12,7 +20,9 @@ export class DeepgramChannel {
    * @param {object} opts
    * @param {string} opts.apiKey
    * @param {string} opts.language  Deepgram language code (en | ro | pt-BR)
-   * @param {(u: {text: string, isFinal: boolean}) => void} opts.onUtterance
+   * @param {(u: {text: string, isFinal: boolean, stale?: boolean}) => void} opts.onUtterance
+   *   `stale` results hold words from before the last cut(): record them, but
+   *   they are not part of what is being asked now.
    * @param {(state: string, detail?: string) => void} [opts.onState]
    */
   constructor({ apiKey, language, onUtterance, onState = () => {} }) {
@@ -29,6 +39,15 @@ export class DeepgramChannel {
     this.pendingFinals = [];
     // Audio that arrives before the socket opens, so the first words are not lost.
     this.queue = [];
+
+    // Audio timeline, in seconds of audio accepted by send(). Deepgram's word
+    // times are relative to the start of each socket's stream, so remember
+    // where on this timeline the current socket's stream began.
+    this.audioAt = 0;
+    this.queueStart = 0;
+    this.streamStart = null;
+    this.heardUntil = 0; // end of the latest word Deepgram returned
+    this.cutAt = null;
   }
 
   url() {
@@ -48,6 +67,7 @@ export class DeepgramChannel {
 
   connect() {
     this.closedByUs = false;
+    this.streamStart = null;
     const socket = new WebSocket(this.url(), ['token', this.apiKey]);
     socket.binaryType = 'arraybuffer';
     this.socket = socket;
@@ -55,6 +75,7 @@ export class DeepgramChannel {
     socket.onopen = () => {
       this.retries = 0;
       this.onState('connected');
+      this.streamStart = this.queue.length ? this.queueStart : this.audioAt;
       for (const chunk of this.queue) socket.send(chunk);
       this.queue = [];
       this.startKeepalive();
@@ -101,7 +122,25 @@ export class DeepgramChannel {
     if (data.type !== 'Results') return;
 
     const alt = data.channel?.alternatives?.[0];
-    const text = alt?.transcript?.trim();
+    let text = alt?.transcript?.trim();
+    const words = alt?.words || [];
+    const base = this.streamStart ?? 0;
+    if (words.length) this.heardUntil = Math.max(this.heardUntil, base + words[words.length - 1].end);
+
+    if (this.cutAt !== null && text) {
+      const resultEnd = base + (data.start || 0) + (data.duration || 0);
+      if (words.length) {
+        const wordText = (list) => list.map((w) => w.punctuated_word || w.word).join(' ');
+        const before = words.filter((w) => base + w.start < this.cutAt);
+        if (before.length) {
+          text = wordText(words.filter((w) => base + w.start >= this.cutAt));
+          if (data.is_final) this.onUtterance({ text: wordText(before), isFinal: true, stale: true });
+        }
+      } else if (resultEnd <= this.cutAt) {
+        if (data.is_final) this.onUtterance({ text, isFinal: true, stale: true });
+        text = '';
+      }
+    }
     if (!text && !data.speech_final) return;
 
     if (data.is_final) {
@@ -129,7 +168,27 @@ export class DeepgramChannel {
     if (this.socket?.readyState === WebSocket.OPEN) {
       this.socket.send(pcmChunk);
     } else if (this.queue.length < 100) {
+      if (!this.queue.length) this.queueStart = this.audioAt;
       this.queue.push(pcmChunk);
+    } else {
+      return; // dropped: not part of any stream, so not on the timeline
+    }
+    this.audioAt += pcmChunk.byteLength / 2 / SAMPLE_RATE;
+  }
+
+  /**
+   * A question was just sent: nothing said before this point belongs to the
+   * next one. `until` is 'now' (all audio so far — for a manual Send, which
+   * covers everything the candidate heard) or 'heard' (only what Deepgram has
+   * already returned — for an automatic answer fired from a final result, so a
+   * follow-up the interviewer has already started is kept).
+   */
+  cut(until = 'now') {
+    this.cutAt = until === 'heard' ? this.heardUntil : this.audioAt;
+    // Settled text of the current utterance is all from before the cut.
+    if (this.pendingFinals.length) {
+      this.onUtterance({ text: this.pendingFinals.join(' '), isFinal: true, stale: true });
+      this.pendingFinals = [];
     }
   }
 

@@ -55,14 +55,19 @@ and `fpm`, which Windows lacks; `dist:linux:tar` is the one Linux target that wo
 ### Installing
 
 - **Windows:** run the `.exe` installer.
-- **macOS:** open the `.dmg` and drag the app to Applications. Without an Apple Developer ID
-  certificate the app is unsigned, so Gatekeeper refuses to open it the first time. Either
-  right-click the app → **Open** → **Open**, or run
-  `xattr -dr com.apple.quarantine "/Applications/Interview Copilot.app"`. To ship a signed +
-  notarized build, add `CSC_LINK` (base64 `.p12`) and `CSC_KEY_PASSWORD` as repository secrets;
-  the workflow picks them up. On first Start, macOS asks for **Microphone** access (covers both your
-  mic and the virtual audio device); re-enable it under System Settings → Privacy & Security →
-  Microphone if you denied it.
+- **macOS:** open the `.dmg` and drag the app to Applications. A build that is not notarized by
+  Apple is refused on other Macs with *"Apple could not verify … is free of malware"* (Gatekeeper,
+  not a virus) — an **Apple Development** certificate does not help, only **Developer ID** +
+  notarization does. To open such a build once per Mac: on macOS 15+ double-click it (refused),
+  then System Settings → Privacy & Security → **Open Anyway**; on macOS 14 and earlier
+  right-click → **Open** → **Open**; or `xattr -dr com.apple.quarantine "/Applications/Interview
+  Copilot.app"`. To ship a build that opens without this, join the Apple Developer Program,
+  create a **Developer ID Application** certificate, and give the build (locally or as repository
+  secrets) `CSC_LINK` (base64 `.p12`) + `CSC_KEY_PASSWORD` for signing and `APPLE_ID` +
+  `APPLE_APP_SPECIFIC_PASSWORD` + `APPLE_TEAM_ID` for notarization (`mac.notarize` is on in
+  package.json; it is skipped when those are missing). On first Start, macOS asks for **System Audio Recording** (the
+  interviewer) and **Microphone** (you); re-enable either under System Settings → Privacy & Security
+  if you denied it, then quit and reopen the app.
 - **Linux AppImage:** `chmod +x InterviewCopilot-*.AppImage && ./InterviewCopilot-*.AppImage`. Needs
   FUSE 2 (`sudo apt install libfuse2` on Ubuntu 22.04+); or run with `--appimage-extract-and-run`.
 - **Linux .deb:** `sudo apt install ./InterviewCopilot-*.deb`, then launch **Interview Copilot**
@@ -79,13 +84,19 @@ Without a tray the app still works; use the panel's ⚙ button for Setup.
 
 ## First-time setup
 
-Click the **⚙** in the panel (or the tray icon → Setup). Setup has two tabs: **Profile** (this
-interview: the profile picker, resume, job description, custom prompt, answer style, language) and
-**App** (the program itself: appearance, AI provider and model, API keys, capture devices). Fill in:
+Click the **⚙** in the panel (or the tray icon → Setup). Setup has three tabs: **Profile** (this
+interview: the profile picker, resume, job description, custom prompt, answer style, language),
+**App** (the program itself: appearance, AI provider and model, API keys, capture devices) and
+**Guide** (install, setup, use and troubleshooting, for the platform it runs on — also opened by the
+panel's **?** button). Fill in:
 
 - **Resume**, **job description**, **custom prompt**, answer style, language.
-- **Provider + model**, and the **API keys** (Anthropic / OpenAI / Gemini, plus **Deepgram** for
-  transcription).
+- **Transcription** — **Offline** (default): press **Download** once to get the speech model
+  (~670 MB); it then runs on the machine, works without internet during the call and sends no
+  audio anywhere. One model (NVIDIA Parakeet v3 via sherpa-onnx) covers English, Romanian and
+  Portuguese. Or **Deepgram** (cloud) with an API key. See [Transcription](#transcription).
+- **Provider + model**, and the **API keys** (Anthropic / OpenAI / Gemini; **Deepgram** only if
+  you chose it for transcription).
 - **Theme** — Dark (default), Light, Nord, Dracula, Solarized Dark / Light, Gruvbox, Catppuccin,
   Tokyo Night, Rosé Pine or Monokai. The panel header has the same picker, and a change applies
   to both windows immediately.
@@ -112,6 +123,21 @@ interview: the profile picker, resume, job description, custom prompt, answer st
   It goes to the AI together with the resume and job description, so the next round stays
   consistent with what was already said even if the session itself is gone.
 
+### Proxy (blocked regions)
+
+If the provider endpoints are unreachable where you are (mainland China, Hong Kong…), set a
+**proxy** under Setup → Network: the address of your VPN / proxy client, e.g. `http://127.0.0.1:7890`
+or `socks5://127.0.0.1:1080` (credentials as `http://user:pass@host:port`). It routes all of the
+app's API traffic — OpenAI, Anthropic, Gemini and the Deepgram audio stream — and takes effect
+immediately. **Check proxy** tests the address you typed against all four services and shows the
+round-trip time for each; leave the field empty to use the system proxy settings.
+
+A proxy that needs a username / password is handled through a loopback relay the app runs on
+127.0.0.1: the relay adds the login to every tunnel, because Chromium can answer the proxy's
+challenge for ordinary requests but not for a WebSocket handshake, and the Deepgram audio stream
+is a WebSocket (that is what "Deepgram socket error" right after Start meant). Both http(s) and
+socks5 proxies with credentials work this way; the check uses the same path as the app.
+
 Keys can instead go in **`config/keys.json`** next to the app (a `keys.example.json` is included).
 Keys in that file pre-fill any field you have left empty; a key typed in Setup overrides the file,
 and Remove falls back to the file again. Fields show only the first and last 5 characters of a
@@ -124,8 +150,10 @@ key and never reveal it; to replace a key, click the field and paste the new one
    - **Windows:** on first run Windows asks to share a screen — that grant is what lets the app read
      **system audio** (what you hear = the interviewer). Only the audio is used; the video is dropped
      immediately.
-   - **macOS:** the app reads the meeting audio from a **virtual audio device** (BlackHole) — see
-     [Platform notes](#platform-notes-on-system-audio) for the one-time setup.
+   - **macOS 14.2+:** the app records the Mac's **system audio output** directly — whatever you
+     hear, through any speaker or headphones. macOS asks once for *System Audio Recording*
+     permission. Older macOS uses a virtual audio device (BlackHole) — see
+     [Platform notes](#platform-notes-on-system-audio).
    - **Linux:** the app creates a temporary audio source mirroring your default output and captures
      it. Nothing to click.
 3. The interviewer's words appear in the **Question to send** box as they are heard (the live
@@ -165,6 +193,37 @@ interviewer, red if disconnected. One interview = one AI conversation session, s
 
 ---
 
+## Transcription
+
+Speech-to-text runs **offline by default**: the main process starts a utility process
+([src/main/stt/worker.js](src/main/stt/worker.js)) that loads a downloaded model with
+[sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) (`sherpa-onnx-node`, prebuilt for Windows x64,
+macOS arm64 / x64 and Linux x64 / arm64) and transcribes both audio channels. The renderer talks
+to it through [src/renderer/offline-stt.js](src/renderer/offline-stt.js), which has the same shape
+as the Deepgram client, so the rest of the panel does not care which engine is on.
+
+- **Models** ([src/main/stt/models.js](src/main/stt/models.js)), downloaded from Setup → App →
+  Transcription into `<userData>/stt-models/`, file by file (a stopped download resumes), through
+  the app's proxy setting if one is set:
+  - **Parakeet v3** (`parakeet-tdt-0.6b-v3-int8`, default) — NVIDIA Parakeet-TDT 0.6B v3, int8:
+    ~670 MB, ~1.3 GB of RAM while running, 25 European languages including en / ro / pt, detects
+    the language itself. On an M-series Mac a 7 s utterance decodes in well under a second.
+  - **Whisper small** (`whisper-small-int8`) — ~375 MB download but ~1.8 GB of RAM, slower and
+    less accurate; transcribes in the Meeting language. For machines where the bigger download is
+    the problem, not the memory.
+  - **Silero VAD** (`silero_vad.onnx`) splits the audio into utterances for both.
+- **Live behaviour:** the models are non-streaming, so the VAD closes an utterance after 0.5 s of
+  silence (or 20 s of continuous speech) and that utterance becomes a *final* result; while the
+  speaker is still talking, the audio heard so far is decoded every ~1.2 s as an *interim* result,
+  so the question box fills in live as it did with Deepgram. Pressing **Send** mid-utterance cuts
+  the audio at that point: the part before it is saved to the transcript only, the rest starts the
+  next question (same rule as the Deepgram path, see `cut()` in both clients).
+- **Packaging:** the native addon and its shared libraries are `asarUnpack`ed. A macOS build for
+  the other CPU architecture fetches that architecture's addon first
+  ([scripts/ensure-sherpa-arch.js](scripts/ensure-sherpa-arch.js), run by `dist:mac*`). If the
+  addon is missing for a platform the app says so and Deepgram can be selected instead.
+- Set `STT_DEBUG=1` to see the worker's stderr.
+
 ## Platform notes on system audio
 
 Electron's built-in loopback capture is Windows-only, so each platform gets the interviewer's audio
@@ -178,8 +237,28 @@ System-audio loopback works out of the box via the app's `getDisplayMedia` handl
 
 ### macOS
 
-The app captures a **virtual audio device** as if it were a microphone. One-time setup with the
-free, open-source [BlackHole](https://existential.audio/blackhole/):
+**macOS 14.2 and later — nothing to install.** On Start, the main process runs
+`copilot-audio-tap` ([native/mac-audio-tap/AudioTap.swift](native/mac-audio-tap/AudioTap.swift)), a
+small Swift helper that creates a Core Audio **process tap** on the whole system mix and writes it to
+stdout as 16 kHz mono PCM; [src/main/mac-audio-tap.js](src/main/mac-audio-tap.js) streams the chunks
+to the renderer, which sends them to Deepgram. Because it taps the system mix rather than a device,
+the meeting app can play through any speaker, headphones or AirPods, and switching outputs mid-call
+keeps working. The panel shows what it listens to (e.g. *Mac system audio output (MacBook Pro
+Speakers)*).
+
+- **Permission:** macOS asks once, *"Interview Copilot" would like to record system audio* (the
+  text is `NSAudioCaptureUsageDescription`). Until it is answered the capture waits and the panel
+  says so. A denied permission gives silence, not an error — turn it on under System Settings →
+  Privacy & Security → Screen & System Audio Recording → *System Audio Recording Only*, quit and
+  reopen the app.
+- **Building:** `npm run dist:mac*` builds the universal helper first (`npm run build:mac-tap`,
+  needs Xcode or the Command Line Tools with the macOS 14.2+ SDK) and ships it in
+  `Contents/Resources/bin`. For `npm start` on a Mac, run `npm run build:mac-tap` once; without the
+  helper the app falls back to a virtual device.
+
+**Older macOS, or to capture a specific device:** pick it in Setup → **Capture** → **System audio
+source** (a device picked there always wins over Automatic). One-time setup with the free, open-source
+[BlackHole](https://existential.audio/blackhole/):
 
 1. `brew install --cask blackhole-2ch` (or the `.pkg` installer from the site). The driver is only
    picked up after the audio daemon restarts: reboot, or run `sudo killall coreaudiod`, then reopen
@@ -188,18 +267,15 @@ free, open-source [BlackHole](https://existential.audio/blackhole/):
 2. Open **Audio MIDI Setup** → **+** → **Create Multi-Output Device**; tick your speakers /
    headphones **and** BlackHole 2ch (leave any Teams / Zoom virtual device unticked).
 3. During the call, select that Multi-Output Device as the Mac's **sound output** (Control Centre →
-   Sound). You still hear everything; BlackHole gets a copy.
-4. In the app's Setup → **Capture** → **System audio source**, leave **Automatic** (it picks the
-   first BlackHole / Loopback / Soundflower device) or choose BlackHole explicitly.
+   Sound), and set **Speaker** to it inside the meeting app too (Teams: Settings → Devices → Speaker;
+   Zoom: Settings → Audio). You still hear everything; BlackHole gets a copy.
+4. On macOS before 14.2, **Automatic** picks the first BlackHole / Loopback / Soundflower device;
+   on 14.2+ choose BlackHole explicitly.
 
-Any other virtual driver (Loopback, Soundflower, VB-Cable) works the same way.
-
-**Started, but nothing is transcribed?** The panel says which device it listens on when you press
-Start, and warns after a few seconds of silence. On macOS that almost always means the meeting is
-not playing through the Multi-Output Device: Teams and Zoom choose their own speaker independently
-of the system output, so set **Speaker** to the Multi-Output Device inside the meeting app too
-(Teams: Settings → Devices → Speaker; Zoom: Settings → Audio), and keep the Mac's sound output on
-it as well. The interviewer must be audible to you through that device for BlackHole to get a copy.
+**Started, but nothing is transcribed?** The panel says which source it listens on when you press
+Start, and warns after a few seconds of silence. With the system-output capture that means nothing
+audible is playing or the permission is off; with BlackHole it almost always means the meeting is not
+playing through the Multi-Output Device.
 
 ### Linux
 
@@ -244,14 +320,19 @@ src/
   main/          Electron main process
     main.js        windows, tray, global shortcuts, IPC; Windows loopback handler, macOS menu +
                    mic permission, Linux pactl monitor source
+    mac-audio-tap.js  runs the macOS system-audio helper and streams its PCM to the panel
+    stt/           offline speech-to-text: models.js (catalogue), index.js (download, worker
+                   lifecycle, IPC), worker.js (sherpa-onnx + VAD in a utility process)
     preload.js     the only renderer <-> main bridge (contextBridge)
     settings.js    JSON settings in userData + config/keys.json override
   assets/        tray icons (tray.png for Windows / Linux, trayTemplate.png for the macOS menu bar)
   renderer/      the panel window (frameless, transparent, always-on-top)
     index.html · renderer.js   glue
     ui.js          panel DOM (header, transcript, question box, answer + code split)
-    audio.js       system audio (Windows loopback / Linux monitor source / macOS virtual device)
-                   + mic capture -> Deepgram -> detector -> AnswerEngine
+    audio.js       system audio (Windows loopback / Linux monitor source / macOS system output
+                   or virtual device) + mic capture -> offline STT or Deepgram -> detector -> AnswerEngine
+    offline-stt.js the offline speech-to-text channel (same interface as shared/deepgram.js)
+
     panel.css
     settings.html · settings.js · settings.css   setup window
   shared/        framework-independent logic, shared with the extension in spirit
@@ -260,6 +341,8 @@ src/
     constants.js · settings-util.js
     llm/           anthropic · openai · gemini behind one streaming interface, with
                    the per-interview conversation session
+native/
+  mac-audio-tap/ AudioTap.swift + build.sh -> native/bin/copilot-audio-tap (universal macOS helper)
 build/
   entitlements.mac.plist   hardened-runtime entitlements for the macOS build
 make-linux-tar.js          portable Linux tarball packer (works from Windows)

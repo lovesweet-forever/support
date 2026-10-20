@@ -19,8 +19,9 @@ function reportChrome() {
 }
 reportChrome();
 
-// ---- tabs: Profile (this interview) / App (the program itself) --------------
+// ---- tabs: Profile (this interview) / App (the program itself) / Guide -------
 function showTab(id) {
+  if (!document.querySelector(`.tab[data-tab="${id}"]`)) return;
   for (const b of document.querySelectorAll('.tab')) b.classList.toggle('active', b.dataset.tab === id);
   for (const p of document.querySelectorAll('.tab-page')) p.hidden = p.dataset.tab !== id;
   try { localStorage.setItem('setupTab', id); } catch { /* storage unavailable */ }
@@ -32,7 +33,11 @@ $('tabs').addEventListener('click', (e) => {
 });
 let lastTab = 'profile';
 try { lastTab = localStorage.getItem('setupTab') || 'profile'; } catch { /* storage unavailable */ }
-showTab(document.querySelector(`.tab[data-tab="${lastTab}"]`) ? lastTab : 'profile');
+// Opened from the panel's Guide button (or the menu): that tab wins.
+const requestedTab = new URLSearchParams(location.search).get('tab');
+showTab(requestedTab || lastTab);
+if (!document.querySelector('.tab.active')) showTab('profile');
+api.onShowTab((tab) => showTab(tab));
 
 // ---- font picker ------------------------------------------------------------
 // Each card is rendered in its own font so the choice is visible before clicking.
@@ -120,6 +125,7 @@ api.onSettingsChanged((s) => {
   if (switched) fillProfileFields(s);
   renderProfiles();
   renderKeyLocks(); // e.g. a cleared key falling back to config/keys.json (skips the field being edited)
+  renderStt();
 });
 
 $('language').innerHTML = LANGUAGES.map((l) => `<option value="${l.code}">${l.label}</option>`).join('');
@@ -236,6 +242,40 @@ $('modelCustom').addEventListener('input', () => save({ model: $('modelCustom').
 bindCheck('transcribeCandidate', 'transcribeCandidate');
 bindCheck('autoAnswer', 'autoAnswer');
 
+// ---- proxy ------------------------------------------------------------------
+$('proxyUrl').value = settings.proxyUrl || '';
+$('proxyUrl').addEventListener('input', () => save({ proxyUrl: $('proxyUrl').value.trim() }));
+$('proxyCheck').addEventListener('click', async () => {
+  const btn = $('proxyCheck');
+  const out = $('proxyResult');
+  btn.disabled = true;
+  out.className = 'proxy-result';
+  out.textContent = 'Checking… (up to 10 s per endpoint)';
+  try {
+    const res = await api.checkProxy($('proxyUrl').value);
+    out.textContent = '';
+    if (res.error) { out.className = 'proxy-result bad'; out.textContent = res.error; return; }
+    const head = document.createElement('div');
+    head.className = 'proxy-head';
+    head.textContent = res.ok
+      ? `Proxy works (${res.proxy === 'system' ? 'system settings' : res.proxy}): all four services reachable.`
+      : `Some services are not reachable through ${res.proxy === 'system' ? 'the system settings' : res.proxy}.`;
+    out.append(head);
+    for (const r of res.results) {
+      const line = document.createElement('div');
+      line.className = `proxy-line ${r.ok ? 'ok' : 'bad'}`;
+      line.textContent = r.ok ? `✓ ${r.name} — ${r.ms} ms (HTTP ${r.status})` : `✗ ${r.name} — ${r.error} (${r.ms} ms)`;
+      out.append(line);
+    }
+    out.className = `proxy-result ${res.ok ? 'good' : 'bad'}`;
+  } catch (err) {
+    out.className = 'proxy-result bad';
+    out.textContent = `Check failed: ${String(err.message || err).replace(/^.*?:\s*Error:\s*/, '')}`;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
 // ---- capture devices --------------------------------------------------------
 // Windows captures system audio through Electron's loopback, so the picker is
 // only needed for unusual setups; macOS has no loopback and needs a virtual
@@ -253,10 +293,22 @@ $('systemAudioHint').innerHTML = isLinux
       'Audio MIDI Setup, use it as the sound output during the call, then pick BlackHole here.'
     : 'Automatic uses Windows system loopback (whatever you hear). Pick a device only if you route the meeting through a virtual cable.';
 
+// macOS 14.2+ records the system output directly (native helper); older macOS
+// still needs a virtual device.
+const macTap = isMac ? await api.macTap.info().catch(() => ({ supported: false, reason: '' })) : { supported: false };
+if (macTap.supported) {
+  $('systemAudioHint').innerHTML =
+    'Automatic records the Mac\'s system audio output — everything you hear, from any meeting app, through any speaker or headphones. ' +
+    'No BlackHole or Multi-Output Device needed. macOS asks once for <b>System Audio Recording</b> permission. ' +
+    'Pick a device here only to capture a virtual device (BlackHole, Loopback) instead.';
+}
+
 const AUTO_LABEL = isLinux
   ? 'Automatic — mirror the default output (PulseAudio / PipeWire)'
   : isMac
-    ? 'Automatic — first virtual device found (BlackHole, Loopback…)'
+    ? macTap.supported
+      ? 'Automatic — Mac system audio output (everything you hear)'
+      : 'Automatic — first virtual device found (BlackHole, Loopback…)'
     : 'Automatic — Windows system loopback (what you hear)';
 
 async function fillDevices() {
@@ -300,3 +352,124 @@ $('transcribeCandidate').checked = settings.transcribeCandidate;
 $('autoAnswer').checked = settings.autoAnswer;
 renderProviderFields();
 renderKeyLocks();
+
+// ---- guide ------------------------------------------------------------------
+// Steps for this computer's platform by default; the switch shows the others
+// (e.g. to help someone on Windows).
+const OS_ID = isMac ? 'mac' : isLinux ? 'linux' : 'win';
+function showGuideOs(os) {
+  document.querySelector('.guide').dataset.guideOs = os;
+  for (const b of document.querySelectorAll('[data-os-pick]')) b.classList.toggle('active', b.dataset.osPick === os);
+  const mod = os === 'mac' ? '⌥⇧' : 'Alt+Shift+';
+  for (const k of document.querySelectorAll('kbd[data-key]')) k.textContent = mod + k.dataset.key;
+}
+$('guideOs').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-os-pick]');
+  if (b) showGuideOs(b.dataset.osPick);
+});
+showGuideOs(OS_ID);
+
+api.appInfo().then(({ version, macosVersion }) => {
+  const osName = isMac ? `macOS ${macosVersion}` : isLinux ? 'Linux' : 'Windows';
+  $('guideVersion').textContent = `Interview Copilot ${version} · ${osName}`;
+}).catch(() => {});
+
+// What Automatic does on this very machine, so the guide matches the app.
+$('guideCaptureText').innerHTML = isMac
+  ? macTap.supported
+    ? 'On this Mac, <b>Automatic</b> records the <b>system audio output</b>: everything you hear, from Zoom, Teams, Meet or any other app, ' +
+      'through your speakers, headphones or AirPods. You don\'t need BlackHole, a Multi-Output Device, or to change the speaker in the meeting app. ' +
+      'If you can hear the interviewer, so can the app. macOS asks once for <b>System Audio Recording</b> permission.'
+    : `This Mac can't record its system audio directly (${macTap.reason || 'needs macOS 14.2 or later'}). ` +
+      'Route the meeting through a virtual audio device such as BlackHole. See <b>Older macOS: BlackHole</b> under Troubleshooting.'
+  : isLinux
+    ? '<b>Automatic</b> creates a temporary source that mirrors your default output (PulseAudio / PipeWire) while a session runs: whatever you hear.'
+    : '<b>Automatic</b> records Windows system audio (loopback): whatever you hear through the default output device.';
+
+// ---- transcription: engine + offline model download -------------------------
+// The model list and what is on disk come from the main process (main/stt);
+// the download runs there too, this page only shows its progress.
+let stt = null;
+const fmtBytes = (n) => (n >= 1e9 ? `${(n / 1e9).toFixed(2)} GB` : `${Math.round(n / 1e6)} MB`);
+
+function renderStt() {
+  if (!stt) return;
+  const engine = settings.sttEngine || 'offline';
+  for (const r of document.querySelectorAll('input[name="sttEngine"]')) r.checked = r.value === engine;
+  $('sttOffline').hidden = engine !== 'offline';
+  const sel = $('sttModel');
+  if (sel.options.length !== stt.models.length) {
+    sel.innerHTML = stt.models.map((m) => `<option value="${m.id}">${m.label.replace(/</g, '&lt;')}</option>`).join('');
+  }
+  sel.value = stt.model;
+  const m = stt.models.find((x) => x.id === stt.model) || stt.models[0];
+  $('sttModelHint').textContent = m.hint;
+
+  const state = $('sttState');
+  const dl = stt.downloading && stt.downloading.modelId === m.id ? stt.downloading : null;
+  if (!stt.supported) {
+    state.textContent = stt.reason;
+    state.className = 'bad';
+  } else if (dl) {
+    const pct = dl.total ? Math.floor((dl.received / dl.total) * 100) : 0;
+    state.textContent = `Downloading… ${pct}% (${fmtBytes(dl.received)} of ${fmtBytes(dl.total)})${dl.file ? ` — ${dl.file}` : ''}`;
+    state.className = '';
+    $('sttBar').style.width = `${pct}%`;
+  } else if (m.installed) {
+    state.textContent = `Installed · ${fmtBytes(m.size)} on disk · ready to use`;
+    state.className = 'ok';
+  } else {
+    state.textContent = m.onDisk ? `Partly downloaded (${fmtBytes(m.onDisk)} of ${fmtBytes(m.size)}) — Download continues where it stopped` : `Not downloaded · ${fmtBytes(m.size)}`;
+    state.className = '';
+  }
+  $('sttProgress').hidden = !dl;
+  $('sttDownload').hidden = Boolean(dl) || m.installed || !stt.supported;
+  $('sttDownload').disabled = Boolean(stt.downloading);
+  $('sttCancel').hidden = !dl;
+  $('sttDelete').hidden = Boolean(dl) || !(m.installed || m.onDisk);
+  $('sttNote').textContent = stt.supported
+    ? 'The model runs on the CPU while a session is on. Download once per computer; the files are stored under ' + stt.dir
+    : '';
+}
+
+async function refreshStt() {
+  stt = await api.stt.status().catch(() => null);
+  renderStt();
+}
+
+$('sttEngine').addEventListener('change', (e) => {
+  if (e.target.name !== 'sttEngine') return;
+  settings.sttEngine = e.target.value;
+  save({ sttEngine: e.target.value });
+  renderStt();
+});
+$('sttModel').addEventListener('change', () => {
+  settings.sttModel = $('sttModel').value;
+  if (stt) stt.model = settings.sttModel;
+  save({ sttModel: settings.sttModel });
+  renderStt();
+});
+$('sttDownload').addEventListener('click', async () => {
+  const modelId = $('sttModel').value;
+  $('sttDownload').disabled = true;
+  await refreshStt();
+  const res = await api.stt.download(modelId);
+  await refreshStt();
+  if (!res.ok && res.error !== 'cancelled') {
+    $('sttState').textContent = `Download failed: ${res.error}`;
+    $('sttState').className = 'bad';
+  }
+});
+$('sttCancel').addEventListener('click', () => api.stt.cancelDownload());
+$('sttDelete').addEventListener('click', async () => {
+  stt = await api.stt.deleteModel($('sttModel').value);
+  renderStt();
+});
+$('sttFolder').addEventListener('click', () => api.stt.openFolder());
+api.stt.onDownloadProgress((p) => {
+  if (!stt) return;
+  stt.downloading = p;
+  if (p.received >= p.total) stt.downloading = null; // the final status refresh marks it installed
+  renderStt();
+});
+refreshStt();

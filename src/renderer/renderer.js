@@ -23,7 +23,7 @@ const REQUIRED = [
 
 function missingInputs() {
   const missing = REQUIRED.filter((r) => !String(settings[r.key] || '').trim()).map((r) => r.label);
-  if (!String(settings.deepgramKey || '').trim()) missing.push('Deepgram API key');
+  if (settings.sttEngine === 'deepgram' && !String(settings.deepgramKey || '').trim()) missing.push('Deepgram API key');
   return missing;
 }
 
@@ -46,6 +46,7 @@ async function toggleSession() {
 const ui = buildPanel(document.getElementById('root'), {
   onToggleSession: toggleSession,
   onOpenSettings: () => api.openSettings(),
+  onOpenGuide: () => api.openSettings('guide'),
   onHide: () => api.hidePanel(),
   onQuit: () => api.quit(),
   onLanguage: (language) => { save({ language }); audio.setLanguage(language); },
@@ -210,7 +211,7 @@ async function retryAnswer() {
   // If this was the latest, completed question, its old answer is already in
   // the AI's memory of the session — drop it so the retry does not see both.
   const replaceLast = viewIndex === qa.length - 1 && Boolean(entry.answer) && !entry.error;
-  audio.ask(entry.question, entry.attachments, { replaceLast });
+  audio.ask(entry.question, entry.attachments, { replaceLast, retry: true });
   ui.notice('Asking again…');
 }
 
@@ -237,9 +238,18 @@ async function sendPending() {
 // Which input carries the interviewer, and whether we already warned that it
 // is silent (once per Start).
 let captureLabel = '';
+let captureMode = '';
 let silenceWarned = false;
+let permissionWarned = false;
+const MAC_PERMISSION_PATH = 'System Settings → Privacy & Security → Screen & System Audio Recording → System Audio Recording Only';
 function silenceAdvice() {
   const dev = captureLabel ? `"${captureLabel}"` : 'the system-audio device';
+  if (captureMode === 'mac-tap') {
+    // Recording the whole system output: routing cannot be wrong, so it is
+    // either nothing playing or the permission.
+    return `No sound is reaching ${dev}. Check that you can hear the interviewer on this Mac and the meeting is not muted. ` +
+      `If you can, Interview Copilot is not allowed to record system audio: turn it on in ${MAC_PERMISSION_PATH}, then press Stop and Start.`;
+  }
   if (api.platform === 'darwin') {
     return `No sound is reaching ${dev}. Set the Mac's sound output (Control Centre → Sound) to your Multi-Output Device, ` +
       'and in the meeting app set the Speaker to that same device (Teams: Settings → Devices → Speaker; Zoom: Settings → Audio). ' +
@@ -266,7 +276,7 @@ const audio = new AudioSession({
         }
         // The candidate's words are saved (session + PDF) but not shown: the
         // pane stays the interviewer only.
-        if (e.channel !== 'interviewer') break;
+        if (e.channel !== 'interviewer' || e.stale) break;
         if (awaitingNewQuestion) { ui.clearTranscript(); awaitingNewQuestion = false; }
         ui.addTranscript(e);
         // The interviewer's words reach the question box as they are heard;
@@ -308,8 +318,18 @@ const audio = new AudioSession({
       }
       case 'capture':
         captureLabel = e.label;
+        captureMode = e.mode || '';
+        ui.setCaptureSource(captureLabel);
+        if (e.changed) { ui.notice(`Sound output changed — still listening on "${captureLabel}"`); break; }
         silenceWarned = false;
+        if (permissionWarned) { permissionWarned = false; ui.setWarning(''); }
         ui.notice(`Listening to the interviewer on "${captureLabel || 'system audio'}"`);
+        break;
+      case 'permission-wait':
+        // macOS is showing (or holding) its "record system audio" prompt.
+        permissionWarned = true;
+        ui.setWarning('macOS is asking whether Interview Copilot may record system audio — click Allow. ' +
+          `No prompt? Turn Interview Copilot on in ${MAC_PERMISSION_PATH}, then press Stop and Start.`);
         break;
       case 'audio-state':
         ui.setAudioState(e.state);
@@ -325,10 +345,19 @@ const audio = new AudioSession({
         break;
       case 'running':
         ui.setRunning(e.running);
-        if (!e.running) { ui.setAudioState('off'); if (session) api.endSession(session.id); }
+        if (!e.running) {
+          ui.setAudioState('off');
+          ui.setCaptureSource('');
+          if (permissionWarned) { permissionWarned = false; ui.setWarning(''); }
+          if (session) api.endSession(session.id);
+        }
         break;
       case 'error':
         ui.setWarning(e.message);
+        break;
+      case 'stt-missing':
+        // Nothing to transcribe with yet: take the user to the download.
+        api.openSettings('app');
         break;
     }
   }
